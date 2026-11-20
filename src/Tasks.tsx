@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Attempt, BankItem, QType, Question, Student, Task } from './types'
+import type { Attempt, QType, Question, Student, Task } from './types'
 import {
   correctCount, emptyQuestion, emptyTask, isExpired, removeTask, resetAttempt, saveBank, saveTask,
   taskAudience, toggleTask, uid, unlockStudent, useDB,
@@ -353,7 +353,7 @@ function TaskEditor({ initial, onClose }: { initial: Task; onClose: () => void }
         open={bank}
         onClose={() => setBank(false)}
         defaultMapel={t.mapel}
-        onPick={(qs) => { addQuestions(qs); setBank(false) }}
+        onPick={(qs) => { addQuestions(qs); setBankMsg(`${qs.length} soal dari bank soal ditambahkan.`); setBank(false) }}
       />
     </section>
   )
@@ -506,14 +506,30 @@ export function QuestionCard({
 function BankPicker({ open, onClose, defaultMapel, onPick }: { open: boolean; onClose: () => void; defaultMapel: string; onPick: (qs: Question[]) => void }) {
   const db = useDB()
   const [mapel, setMapel] = useState('')
+  const [dipilih, setDipilih] = useState<Set<string>>(new Set())
   const mapelList = [...new Set(db.bank.map((b) => b.mapel))].sort()
   const rows = db.bank.filter((b) => !mapel || b.mapel === mapel)
-  const pick = (b: BankItem) => {
-    const { mapel: _m, kelas: _k, ...rest } = b
-    onPick([{ ...rest, id: uid('q') }])
+  const semuaTerpilih = rows.length > 0 && rows.every((b) => dipilih.has(b.id))
+  const toggle = (id: string) => setDipilih((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+  const pilihSemua = () => setDipilih((prev) => {
+    const next = new Set(prev)
+    if (semuaTerpilih) rows.forEach((b) => next.delete(b.id))
+    else rows.forEach((b) => next.add(b.id))
+    return next
+  })
+  const tambahkan = () => {
+    const pilihan = db.bank.filter((b) => dipilih.has(b.id))
+    // Salinan soal: mapel, kelas, dan materi bank tidak ikut ke penugasan. ID baru agar tidak bentrok.
+    onPick(pilihan.map(({ mapel: _m, kelas: _k, materi: _x, ...rest }) => ({ ...rest, id: uid('q') })))
+    setDipilih(new Set())
   }
+  const tutup = () => { setDipilih(new Set()); onClose() }
   return (
-    <Modal open={open} onClose={onClose} title="Ambil soal dari bank" wide>
+    <Modal open={open} onClose={tutup} title="Ambil soal dari bank" wide>
       <div className="flex flex-wrap items-end gap-2 mb-3">
         <div>
           <label className="label" htmlFor="bp">Mapel</label>
@@ -527,22 +543,35 @@ function BankPicker({ open, onClose, defaultMapel, onPick }: { open: boolean; on
       {rows.length === 0 ? (
         <Empty icon="book" title="Bank soal kosong" hint="Simpan soal dari editor penugasan atau tambahkan dari menu Bank soal." />
       ) : (
-        <ul className="space-y-2 max-h-[55vh] overflow-auto pr-1">
-          {rows.map((b) => (
-            <li key={b.id} className="flex items-start justify-between gap-3 rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
-              <div className="min-w-0">
-                <div className="flex flex-wrap gap-1.5 mb-1">
-                  <span className="chip chip-gray">{b.kelas || 'Umum'}</span>
-                  <span className="chip chip-teal">{b.mapel}</span>
-                  <span className="chip chip-gray">{b.tipe === 'pg' ? 'PG' : b.tipe === 'pgk' ? 'PGK' : 'B/S'} · {b.bobot ?? 1} poin</span>
-                </div>
-                <p className="text-sm">{b.text}</p>
-              </div>
-              <button className="btn btn-primary btn-sm shrink-0" onClick={() => pick(b)}><Icon n="plus" s={13} /> Tambah</button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 text-sm">
+            <button className="btn btn-ghost btn-sm" onClick={pilihSemua}>{semuaTerpilih ? 'Batal pilih semua' : `Pilih semua ${rows.length} soal yang tampil`}</button>
+            <span style={{ color: 'var(--ink-soft)' }}>{dipilih.size} soal dipilih</span>
+          </div>
+          <ul className="space-y-2 max-h-[52vh] overflow-auto pr-1">
+            {rows.map((b) => (
+              <li key={b.id}>
+                <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer" style={{ borderColor: dipilih.has(b.id) ? 'var(--teal)' : 'var(--line)' }}>
+                  <input type="checkbox" className="mt-1 shrink-0" checked={dipilih.has(b.id)} onChange={() => toggle(b.id)} aria-label={`Pilih soal: ${b.text.slice(0, 40)}`} />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap gap-1.5 mb-1">
+                      <span className="chip chip-gray">{b.kelas || 'Umum'}</span>
+                      <span className="chip chip-teal">{b.mapel}</span>
+                      {b.materi && <span className="chip chip-gray">{b.materi}</span>}
+                      <span className="chip chip-gray">{b.tipe === 'pg' ? 'PG' : b.tipe === 'pgk' ? 'PGK' : 'B/S'} · {b.bobot ?? 1} poin</span>
+                    </div>
+                    <p className="text-sm break-words">{b.text}</p>
+                  </div>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
+      <div className="flex justify-end gap-2 mt-4">
+        <button className="btn btn-ghost" onClick={tutup}>Batal</button>
+        <button className="btn btn-primary" disabled={dipilih.size === 0} onClick={tambahkan}><Icon n="plus" s={13} /> Tambahkan {dipilih.size} soal</button>
+      </div>
     </Modal>
   )
 }
