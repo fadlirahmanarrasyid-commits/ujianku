@@ -21,3 +21,12 @@ revoke execute on function public.kirim_ujian_kedaluwarsa() from authenticated;
 -- Tabel dan fungsi yang dibuat di masa depan ikut mendapat hak yang sama.
 alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
 alter default privileges in schema public grant execute on functions to authenticated;
+
+-- Edge Function (kelola-siswa) memakai service_role untuk membuat akun, kelas, dan profil.
+-- Service role melewati RLS, tetapi tetap memerlukan hak tabel di level Postgres.
+grant usage on schema public to service_role;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+grant execute on all functions in schema public to service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to service_role;
+alter default privileges in schema public grant execute on functions to service_role;

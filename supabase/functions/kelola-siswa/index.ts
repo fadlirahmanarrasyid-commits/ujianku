@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     const { data: found } = await admin.from('kelas').select('id').eq('nama', clean).maybeSingle()
     if (found) return found.id
     const { data: created, error } = await admin.from('kelas').insert({ nama: clean }).select('id').single()
-    if (error) throw error
+    if (error) throw new Error(`Gagal membuat kelas "${clean}": ${error.message}`)
     return created.id
   }
 
@@ -174,6 +174,12 @@ Deno.serve(async (req) => {
         return json({ error: 'Aksi tidak dikenal.' }, 400)
     }
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Kesalahan server.' }, 500)
+    // Galat dari PostgREST berupa objek biasa, bukan instance Error: ambil pesannya juga.
+    const pesan =
+      e instanceof Error ? e.message
+      : typeof e === 'object' && e !== null && 'message' in e ? String((e as { message: unknown }).message)
+      : 'Kesalahan server.'
+    console.error('kelola-siswa gagal:', pesan, e)
+    return json({ error: pesan }, 500)
   }
 })

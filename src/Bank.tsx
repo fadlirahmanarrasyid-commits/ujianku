@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import type { BankItem } from './types'
-import { emptyQuestion, removeBank, saveBank, useDB } from './store'
+import { emptyQuestion, removeBank, saveBank, uid, useDB } from './store'
+import { parseAiken } from './aiken'
+import { bacaBerkasAiken } from './aikenBerkas'
 import { QuestionCard } from './Tasks'
 import { Empty, Icon, Modal } from './ui'
 
@@ -29,6 +31,7 @@ export function BankPage() {
   const [open, setOpen] = useState<string | null>(null)
   const [edit, setEdit] = useState<BankItem | null>(null)
   const [del, setDel] = useState<BankItem | null>(null)
+  const [imp, setImp] = useState(false)
 
   const kelasList = [...new Set([...db.students.map((s) => s.kelas), ...db.bank.map((b) => b.kelas)].filter(Boolean))].sort()
   const mapelList = [...new Set(db.bank.map((b) => b.mapel))].sort()
@@ -140,7 +143,10 @@ export function BankPage() {
               <h1 className="font-display text-2xl font-bold">Bank soal</h1>
               <p className="text-sm mt-1" style={{ color: 'var(--ink-soft)' }}>{db.bank.length} soal dalam {groupMap.size} materi. Pilih materi untuk melihat soalnya.</p>
             </div>
-            {addIcon({ kelas, mapel, materi: '' }, 'Tambah soal')}
+            <div className="flex gap-2">
+              <button className="btn btn-ghost btn-sm" onClick={() => setImp(true)}><Icon n="upload" s={14} /> Impor AIKEN</button>
+              {addIcon({ kelas, mapel, materi: '' }, 'Tambah soal')}
+            </div>
           </div>
 
           <div className="card p-4 mb-4 grid gap-3 items-end md:grid-cols-[minmax(0,1fr)_180px_200px_auto]">
@@ -243,6 +249,7 @@ export function BankPage() {
         </>
       )}
 
+      <AikenBankImport open={imp} onClose={() => setImp(false)} kelasList={kelasList} />
       <Modal open={!!edit} onClose={() => setEdit(null)} title={edit && db.bank.some((x) => x.id === edit.id) ? 'Edit soal bank' : 'Tambah soal ke bank'} wide>
         {edit && (
           <div className="space-y-4">
@@ -278,5 +285,65 @@ export function BankPage() {
         </div>
       </Modal>
     </section>
+  )
+}
+
+/** Impor soal AIKEN langsung ke bank soal, tanpa membuat penugasan. */
+function AikenBankImport({ open, onClose, kelasList }: { open: boolean; onClose: () => void; kelasList: string[] }) {
+  const [txt, setTxt] = useState('')
+  const [mapel, setMapel] = useState('')
+  const [materi, setMateri] = useState('')
+  const [kelas, setKelas] = useState('')
+  const [err, setErr] = useState('')
+  const res = txt.trim() ? parseAiken(txt) : null
+  const siap = !!res && res.questions.length > 0 && !!mapel.trim() && !!materi.trim()
+  const reset = () => { setTxt(''); setMapel(''); setMateri(''); setKelas(''); setErr('') }
+  const tutup = () => { reset(); onClose() }
+  const pilihBerkas = async (f: File | undefined) => {
+    if (!f) return
+    try { setTxt(await bacaBerkasAiken(f)); setErr('') } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal membaca berkas.') }
+  }
+  const simpan = () => {
+    if (!res) return
+    for (const q of res.questions) {
+      saveBank({ ...q, id: uid('b'), mapel: mapel.trim(), materi: materi.trim(), kelas: kelas.trim() })
+    }
+    tutup()
+  }
+  return (
+    <Modal open={open} onClose={tutup} title="Impor AIKEN ke bank soal" wide>
+      <div className="grid gap-3 md:grid-cols-3">
+        <Field label="Mapel"><input className="input" value={mapel} onChange={(e) => setMapel(e.target.value)} placeholder="mis. Pemeliharaan Mesin" /></Field>
+        <Field label="Materi"><input className="input" value={materi} onChange={(e) => setMateri(e.target.value)} placeholder="mis. Sistem Pendingin" /></Field>
+        <Field label="Kelas (opsional)"><input list="aiken-kelas" className="input" value={kelas} onChange={(e) => setKelas(e.target.value)} placeholder="kosongkan = umum" /><datalist id="aiken-kelas">{kelasList.map((k) => <option key={k} value={k} />)}</datalist></Field>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 mt-4 mb-2">
+        <label className="btn btn-ghost btn-sm cursor-pointer">
+          <Icon n="upload" s={14} /> Pilih berkas .txt
+          <input type="file" accept=".txt,.aiken,text/plain" className="sr-only" onChange={(e) => { void pilihBerkas(e.target.files?.[0]); e.target.value = '' }} />
+        </label>
+        <span className="text-xs" style={{ color: 'var(--ink-soft)' }}>atau tempel teks di bawah</span>
+      </div>
+      {err && <p className="text-sm mb-2" style={{ color: 'var(--red)' }} role="alert">{err}</p>}
+      <textarea className="input font-mono" rows={8} value={txt} onChange={(e) => setTxt(e.target.value)} placeholder={'Apa ibukota Indonesia?\nA. Bandung\nB. Jakarta\nANSWER: B'} aria-label="Teks AIKEN" />
+      {res && (
+        <div className="mt-3 text-sm">
+          <p className="font-semibold" style={{ color: res.questions.length ? 'var(--green)' : 'var(--ink-soft)' }}>
+            {res.questions.length} soal terbaca
+            {res.questions.length > 0 && ` · PG ${res.questions.filter((q) => q.tipe === 'pg').length} · PGK ${res.questions.filter((q) => q.tipe === 'pgk').length} · B/S ${res.questions.filter((q) => q.tipe === 'bs').length}`}
+          </p>
+          {res.errors.length > 0 && (
+            <ul className="list-disc pl-5 mt-2 space-y-0.5" style={{ color: 'var(--red)' }}>
+              {res.errors.slice(0, 8).map((e) => <li key={e}>{e}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+      <div className="flex justify-end gap-2 mt-4">
+        <button className="btn btn-ghost" onClick={tutup}>Batal</button>
+        <button className="btn btn-primary" disabled={!siap} onClick={simpan}>Simpan {res?.questions.length ?? 0} soal ke bank</button>
+      </div>
+      {res && (!mapel.trim() || !materi.trim()) && <p className="text-xs mt-2" style={{ color: 'var(--ink-soft)' }}>Isi mapel dan materi sebelum menyimpan.</p>}
+    </Modal>
   )
 }

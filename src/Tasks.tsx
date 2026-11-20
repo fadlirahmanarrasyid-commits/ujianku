@@ -5,6 +5,7 @@ import {
   taskAudience, toggleTask, uid, unlockStudent, useDB,
 } from './store'
 import { parseAiken } from './aiken'
+import { bacaBerkasAiken } from './aikenBerkas'
 import { pilihGambar } from './lib/gambar'
 import { Empty, Icon, Modal, Toggle, VIOLATION_LABEL } from './ui'
 
@@ -548,15 +549,33 @@ function BankPicker({ open, onClose, defaultMapel, onPick }: { open: boolean; on
 
 function AikenImport({ open, onClose, onAdd }: { open: boolean; onClose: () => void; onAdd: (qs: Question[]) => void }) {
   const [txt, setTxt] = useState('')
+  const [berkasErr, setBerkasErr] = useState('')
   const res = useMemo(() => (txt.trim() ? parseAiken(txt) : null), [txt])
+  const pilihBerkas = async (f: File | undefined) => {
+    if (!f) return
+    try {
+      setTxt(await bacaBerkasAiken(f))
+      setBerkasErr('')
+    } catch (e) {
+      setBerkasErr(e instanceof Error ? e.message : 'Gagal membaca berkas.')
+    }
+  }
   return (
-    <Modal open={open} onClose={() => { setTxt(''); onClose() }} title="Impor soal format AIKEN" wide>
+    <Modal open={open} onClose={() => { setTxt(''); setBerkasErr(''); onClose() }} title="Impor soal format AIKEN" wide>
       <pre className="text-xs rounded-lg p-3 mb-3 overflow-x-auto" style={{ background: '#f0ebdc' }}>{`Apa ibukota Indonesia?
 A. Bandung
 B. Jakarta
 C. Surabaya
 D. Medan
 ANSWER: B`}</pre>
+      <div className="flex flex-wrap items-center gap-3 mb-2">
+        <label className="btn btn-ghost btn-sm cursor-pointer">
+          <Icon n="upload" s={14} /> Pilih berkas .txt
+          <input type="file" accept=".txt,.aiken,text/plain" className="sr-only" onChange={(e) => { void pilihBerkas(e.target.files?.[0]); e.target.value = '' }} />
+        </label>
+        <span className="text-xs" style={{ color: 'var(--ink-soft)' }}>atau tempel teks di bawah</span>
+      </div>
+      {berkasErr && <p className="text-sm mb-2" style={{ color: 'var(--red)' }} role="alert">{berkasErr}</p>}
       <textarea className="input font-mono" rows={8} value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Tempel soal format AIKEN di sini…" aria-label="Teks AIKEN" />
       {res && (
         <div className="mt-3 text-sm">
@@ -572,8 +591,8 @@ ANSWER: B`}</pre>
         </div>
       )}
       <div className="flex justify-end gap-2 mt-4">
-        <button className="btn btn-ghost" onClick={() => { setTxt(''); onClose() }}>Batal</button>
-        <button className="btn btn-primary" disabled={!res || res.questions.length === 0} onClick={() => { onAdd(res!.questions); setTxt('') }}>
+        <button className="btn btn-ghost" onClick={() => { setTxt(''); setBerkasErr(''); onClose() }}>Batal</button>
+        <button className="btn btn-primary" disabled={!res || res.questions.length === 0} onClick={() => { onAdd(res!.questions); setTxt(''); setBerkasErr('') }}>
           Tambahkan {res?.questions.length ?? 0} soal
         </button>
       </div>
