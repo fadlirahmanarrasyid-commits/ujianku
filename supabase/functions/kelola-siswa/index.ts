@@ -15,6 +15,19 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 
+// Mencari akun login berdasarkan email (dipakai bila akun sudah ada tetapi belum punya profil).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function cariAkunByEmail(admin: any, email: string): Promise<{ id: string } | null> {
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 })
+    if (error || !data) return null
+    const hit = data.users.find((u: { email?: string }) => (u.email ?? '').toLowerCase() === email.toLowerCase())
+    if (hit) return hit
+    if (data.users.length < 200) return null
+  }
+  return null
+}
+
 const PIN_OK = /^\d{6}$/
 const NIS_OK = /^[A-Za-z0-9._-]{1,30}$/
 
@@ -74,25 +87,49 @@ Deno.serve(async (req) => {
             errors.push(`${nis}: PIN harus 6 digit`)
             continue
           }
+          const email = `${nis}@sekolah.local`
+          let userId: string
+          let baru = false
           const { data: created, error } = await admin.auth.admin.createUser({
-            email: `${nis}@sekolah.local`,
+            email,
             password: pin,
             email_confirm: true,
           })
-          if (error || !created.user) {
-            errors.push(`${nis}: ${error?.message ?? 'gagal membuat akun'}`)
-            continue
+          if (created?.user) {
+            userId = created.user.id
+            baru = true
+          } else {
+            // Akun login sudah ada. Bila belum punya profil (sisa percobaan yang terputus), akun itu dipakai ulang.
+            // Bila sudah punya profil, NIS ini memang sudah terdaftar.
+            const yatim = /already (been )?registered|already exists/i.test(error?.message ?? '')
+              ? await cariAkunByEmail(admin, email)
+              : null
+            if (!yatim) {
+              errors.push(`${nis}: ${error?.message ?? 'gagal membuat akun'}`)
+              continue
+            }
+            const { data: sudahProfil } = await admin.from('profiles').select('id').eq('id', yatim.id).maybeSingle()
+            if (sudahProfil) {
+              errors.push(`${nis}: NIS sudah terdaftar`)
+              continue
+            }
+            const { error: eSandi } = await admin.auth.admin.updateUserById(yatim.id, { password: pin })
+            if (eSandi) {
+              errors.push(`${nis}: ${eSandi.message}`)
+              continue
+            }
+            userId = yatim.id
           }
           const kelasId = await kelasIdOf(String(s.kelas ?? ''))
           const { error: e2 } = await admin.from('profiles').insert({
-            id: created.user.id,
+            id: userId,
             peran: 'siswa',
             nama,
             nis,
             kelas_id: kelasId,
           })
           if (e2) {
-            await admin.auth.admin.deleteUser(created.user.id)
+            if (baru) await admin.auth.admin.deleteUser(userId)
             errors.push(`${nis}: ${e2.message}`)
             continue
           }
