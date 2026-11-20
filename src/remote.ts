@@ -428,7 +428,20 @@ export async function gantiSandiGuruRemote(sandiLama: string, sandiBaru: string)
 /** Tambah, hapus, atau ubah PIN siswa lewat Edge Function (service role di server). */
 export async function kelolaSiswa(body: Record<string, unknown>): Promise<Row> {
   const { data, error } = await client().functions.invoke('kelola-siswa', { body })
-  if (error) throw new Error(error.message)
+  if (error) {
+    // Pada status non-2xx, isi respons (berisi pesan galat dari fungsi) ada di error.context.
+    let detail = error.message
+    const ctx = (error as { context?: Response }).context
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const j = await ctx.json()
+        detail = j?.error ?? j?.message ?? detail
+      } catch {
+        /* isi bukan JSON: pakai pesan bawaan */
+      }
+    }
+    throw new Error(`HTTP ${ctx?.status ?? '?'}: ${detail}`)
+  }
   if (data?.error) throw new Error(data.error)
   return data ?? {}
 }
