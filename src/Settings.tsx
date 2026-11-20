@@ -20,10 +20,14 @@ export function Settings() {
     setBusy(true)
     setMsg({ tone: 'muted', text: 'Menguji koneksi…' })
     try {
-      const res = await fetch(supabaseUrl + '/rest/v1/', {
-        headers: { apikey: supabaseAnonKey, Authorization: 'Bearer ' + supabaseAnonKey },
-      })
-      setMsg(res.ok ? { tone: 'ok', text: 'Terhubung ke Supabase.' } : { tone: 'err', text: `Ditolak (HTTP ${res.status}). Periksa anon key di .env.local.` })
+      // Publishable key (sb_publishable_...) bukan JWT: hanya dikirim di header apikey.
+      // Header Authorization dikirim hanya untuk anon key berbentuk JWT (diawali eyJ).
+      const headers: Record<string, string> = { apikey: supabaseAnonKey }
+      if (supabaseAnonKey.startsWith('eyJ')) headers.Authorization = 'Bearer ' + supabaseAnonKey
+      const res = await fetch(supabaseUrl + '/rest/v1/', { headers })
+      setMsg(res.ok
+        ? { tone: 'ok', text: 'Terhubung ke Supabase.' }
+        : { tone: 'err', text: `Ditolak (HTTP ${res.status}). Pastikan anon / publishable key berasal dari proyek yang sama dengan URL, dan tidak ada spasi di nilainya.` })
     } catch {
       setMsg({ tone: 'err', text: 'Tidak bisa terhubung. Periksa URL, koneksi internet, atau pembatasan jaringan.' })
     } finally {

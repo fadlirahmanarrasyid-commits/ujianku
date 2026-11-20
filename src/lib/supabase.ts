@@ -1,8 +1,9 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 // Hanya anon key yang boleh ada di frontend. Service role key jangan pernah dimasukkan.
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+// trim: spasi atau baris baru ikut tersalin saat menempel nilai ke Vercel atau .env.local.
+const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim()
+const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim()
 
 /**
  * Klien Supabase. Bernilai null bila variabel lingkungan belum diisi,

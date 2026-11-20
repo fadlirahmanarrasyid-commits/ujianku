@@ -109,6 +109,12 @@ export default function Login() {
           </form>
 
           {!remoteOn && (
+            <div className="mt-6 rounded-lg px-3 py-2.5 text-xs" style={{ background: 'var(--amber-tint)', color: 'var(--amber)' }} role="status">
+              <b>Mode lokal:</b> aplikasi belum terhubung ke Supabase, jadi akun Supabase Anda tidak bisa dipakai di sini. Di Vercel, pastikan <code>VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code> sudah diisi, lalu lakukan <b>Redeploy</b>.
+            </div>
+          )}
+
+          {!remoteOn && (
             <div className="mt-6 pt-5 border-t" style={{ borderColor: 'var(--line)' }}>
               <p className="label">Coba cepat (data contoh)</p>
               <div className="flex flex-wrap gap-2">

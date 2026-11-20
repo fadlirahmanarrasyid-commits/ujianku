@@ -7,5 +7,3 @@ Aplikasi ujian berbasis peramban untuk guru dan siswa (React 18 + TypeScript + V
 - Bangun untuk produksi: `pnpm build`.
 - Variabel lingkungan: salin `.env.example` menjadi `.env.local`. Isi hanya `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`.
 - Jangan pernah memasukkan `service_role` key ke repositori atau ke variabel `VITE_*`.
-# ujianku
-# ujianku
