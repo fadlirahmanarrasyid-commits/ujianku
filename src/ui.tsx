@@ -84,7 +84,7 @@ export function Toggle({ on, onChange, label, hint }: { on: boolean; onChange: (
         aria-label={label}
         onClick={() => onChange(!on)}
         className="shrink-0 relative rounded-full transition-colors"
-        style={{ width: 42, height: 24, background: on ? 'var(--teal)' : '#cfc8b6' }}
+        style={{ width: 42, height: 24, background: on ? 'var(--teal)' : 'var(--line)' }}
       >
         <span className="absolute top-[3px] rounded-full bg-white transition-all" style={{ width: 18, height: 18, left: on ? 21 : 3 }} />
       </button>
@@ -132,17 +132,19 @@ export async function enterFS(): Promise<boolean> {
 }
 
 /* ---------- tema warna ---------- */
-export type Theme = 'default' | 'zamrud'
+export type Theme = 'default' | 'zamrud' | 'bluesky' | 'dark'
 const THEME_KEY = 'cbt.theme'
+const THEMES: Theme[] = ['default', 'zamrud', 'bluesky', 'dark']
 export function readTheme(): Theme {
   try {
-    return localStorage.getItem(THEME_KEY) === 'zamrud' ? 'zamrud' : 'default'
+    const v = localStorage.getItem(THEME_KEY) as Theme | null
+    return v && THEMES.includes(v) ? v : 'default'
   } catch {
     return 'default'
   }
 }
 export function applyTheme(t: Theme) {
-  if (t === 'zamrud') document.documentElement.dataset.theme = 'zamrud'
+  if (t !== 'default') document.documentElement.dataset.theme = t
   else delete document.documentElement.dataset.theme
   try {
     localStorage.setItem(THEME_KEY, t)
@@ -167,7 +169,9 @@ export function ThemeSwitch() {
         }}
       >
         <option value="default">Tosca</option>
-        <option value="zamrud">Zamrud (Emerald)</option>
+        <option value="zamrud">Zamrud</option>
+        <option value="bluesky">Blue Sky</option>
+        <option value="dark">Dark</option>
       </select>
     </label>
   )

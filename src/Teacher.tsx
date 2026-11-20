@@ -23,30 +23,31 @@ export default function Teacher() {
   return (
     <div className="min-h-full flex flex-col">
       <header className="no-print sticky top-0 z-30 border-b" style={{ background: 'var(--card)', borderColor: 'var(--line)' }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-x-4 gap-y-2 py-2 min-h-[56px]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-nowrap items-center gap-2 sm:gap-3 h-14">
           <div className="flex items-center gap-2 shrink-0">
-            <div className="grid place-items-center rounded-md" style={{ width: 28, height: 28, background: 'var(--teal)', color: '#fff' }}>
+            <div className="grid place-items-center rounded-md" style={{ width: 28, height: 28, background: 'var(--teal)', color: 'var(--on-teal)' }}>
               <Icon n="task" s={15} />
             </div>
-            <span className="font-display font-bold text-lg hidden sm:inline">UjianKu</span>
+            <span className="font-display font-bold text-lg hidden lg:inline">UjianKu</span>
           </div>
-          <nav className="grid grid-cols-3 gap-1 w-full md:flex md:w-auto md:flex-1 md:flex-wrap min-w-0 order-last md:order-none" aria-label="Menu guru">
+          <nav className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto no-scrollbar" aria-label="Menu guru">
             {tabs.map(([k, l, ic]) => (
               <button
                 key={k}
                 onClick={() => setTab(k)}
                 aria-current={tab === k ? 'page' : undefined}
-                className="flex items-center justify-center md:justify-start gap-1.5 px-2 md:px-3 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap"
+                title={l}
+                aria-label={l}
+                className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-semibold whitespace-nowrap"
                 style={tab === k ? { background: 'var(--teal-tint)', color: 'var(--teal)' } : { color: 'var(--ink-soft)' }}
               >
                 <Icon n={ic} s={15} />
-                {l}
+                <span className={tab === k ? '' : 'hidden xl:inline'}>{l}</span>
               </button>
             ))}
           </nav>
-          <span className="text-xs hidden md:inline" style={{ color: 'var(--ink-soft)' }}>Guru</span>
           <ThemeSwitch />
-          <button className="btn btn-ghost btn-sm" onClick={logout}><Icon n="logout" s={14} /> Keluar</button>
+          <button className="btn btn-ghost btn-sm shrink-0" onClick={logout} aria-label="Keluar" title="Keluar"><Icon n="logout" s={14} /><span className="hidden sm:inline">Keluar</span></button>
         </div>
       </header>
 

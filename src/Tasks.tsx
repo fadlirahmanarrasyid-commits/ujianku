@@ -7,6 +7,7 @@ import {
 import { parseAiken } from './aiken'
 import { bacaBerkasAiken } from './aikenBerkas'
 import { pilihGambar } from './lib/gambar'
+import { namaBerkasAman, tanggalHariIni, unduhCsv } from './exportCsv'
 import { Empty, Icon, Modal, Toggle, VIOLATION_LABEL } from './ui'
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
@@ -24,8 +25,8 @@ const copyOf = (t: Task): Task => ({
   createdAt: Date.now(),
 })
 const pill = (on: boolean) => ({
-  background: on ? 'var(--teal)' : '#fff',
-  color: on ? '#fff' : 'var(--ink)',
+  background: on ? 'var(--teal)' : 'var(--card)',
+  color: on ? 'var(--on-teal)' : 'var(--ink)',
   border: '1px solid ' + (on ? 'var(--teal)' : 'var(--line)'),
 })
 const totalBobot = (qs: Question[]) => qs.reduce((n, q) => n + (q.bobot ?? 1), 0)
@@ -403,7 +404,7 @@ export function QuestionCard({
     })
 
   return (
-    <div className="rounded-lg border p-4" style={{ borderColor: 'var(--line)', background: '#fff' }}>
+    <div className="rounded-lg border p-4" style={{ borderColor: 'var(--line)', background: 'var(--card)' }}>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="chip chip-teal">{label}</span>
@@ -472,7 +473,7 @@ export function QuestionCard({
               aria-label={`Tandai opsi ${String.fromCharCode(65 + k)} sebagai kunci`}
               aria-pressed={q.key.includes(k)}
               className="shrink-0 grid place-items-center rounded-full font-bold text-xs"
-              style={{ width: 30, height: 30, border: '2px solid ' + (q.key.includes(k) ? 'var(--green)' : 'var(--line)'), background: q.key.includes(k) ? 'var(--green)' : '#fff', color: q.key.includes(k) ? '#fff' : 'var(--ink-soft)' }}
+              style={{ width: 30, height: 30, border: '2px solid ' + (q.key.includes(k) ? 'var(--green)' : 'var(--line)'), background: q.key.includes(k) ? 'var(--green)' : 'var(--card)', color: q.key.includes(k) ? 'var(--on-teal)' : 'var(--ink-soft)' }}
             >
               {q.key.includes(k) ? <Icon n="check" s={14} /> : String.fromCharCode(65 + k)}
             </button>
@@ -591,7 +592,7 @@ function AikenImport({ open, onClose, onAdd }: { open: boolean; onClose: () => v
   }
   return (
     <Modal open={open} onClose={() => { setTxt(''); setBerkasErr(''); onClose() }} title="Impor soal format AIKEN" wide>
-      <pre className="text-xs rounded-lg p-3 mb-3 overflow-x-auto" style={{ background: '#f0ebdc' }}>{`Apa ibukota Indonesia?
+      <pre className="text-xs rounded-lg p-3 mb-3 overflow-x-auto" style={{ background: 'var(--tint-2)' }}>{`Apa ibukota Indonesia?
 A. Bandung
 B. Jakarta
 C. Surabaya
@@ -675,6 +676,34 @@ export function Results({ taskId, setTaskId }: { taskId: string; setTaskId: (id:
       return r.a?.status === statusF
     })
 
+  const eksporNilai = () => {
+    const header = ['No', 'Nama', 'NIS', 'Kelas', 'Status', 'Nilai', 'KKM', 'Ketuntasan', 'Benar', 'Jumlah soal', 'Pelanggaran']
+    const body = rows.map(({ s, a }, i) => {
+      const isLocked = a?.status === 'terkunci' || s.locked
+      const status = !a
+        ? (s.locked ? 'Login terkunci' : 'Belum mulai')
+        : a.status === 'selesai' ? 'Selesai'
+        : a.status === 'berjalan' ? 'Mengerjakan'
+        : 'Ujian terkunci'
+      const selesai = a?.status === 'selesai'
+      const nilai = a?.score ?? 0
+      return [
+        i + 1,
+        s.nama,
+        s.nis,
+        s.kelas,
+        isLocked && a?.status !== 'terkunci' && a ? `${status} · Login terkunci` : status,
+        selesai ? nilai : '',
+        task.kkm,
+        selesai ? (nilai >= task.kkm ? 'Tuntas' : 'Belum tuntas') : '',
+        a ? correctCount(task, a) : '',
+        task.questions.length,
+        a ? jumlahPelanggaranOf(a) : 0,
+      ]
+    })
+    unduhCsv(`nilai-${namaBerkasAman(task.judul || 'penugasan')}-${tanggalHariIni()}.csv`, header, body)
+  }
+
   const stats: [string, string | number, string][] = [
     ['Selesai', `${done.length}/${all.length}`, 'var(--teal)'],
     ['Rata-rata', avg ?? '–', 'var(--ink)'],
@@ -720,6 +749,9 @@ export function Results({ taskId, setTaskId }: { taskId: string; setTaskId: (id:
             <option value="locked">Terkunci</option>
             <option value="belum">Belum mulai</option>
           </select>
+          <button className="btn btn-ghost ml-auto" onClick={eksporNilai} disabled={rows.length === 0} title="Unduh nilai siswa yang tampil sebagai CSV (bisa dibuka di Excel)">
+            <Icon n="upload" s={14} /> Ekspor nilai (CSV)
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px]">
@@ -856,17 +888,25 @@ export function Recap() {
       setMsg('Cetak tidak tersedia di tampilan ini. Gunakan “Salin tabel”.')
     }
   }
-  const copyTable = async () => {
+  const tabelData = () => {
     const head = ['No', 'Nama', 'NIS', 'Kelas', ...groups.flatMap((g) => [...g.tasks.map((t) => `${g.mapel} – ${t.judul}`), `${g.mapel} rata-rata`]), 'Rata-rata']
-    const body = students.map((s, i) =>
-      [
-        i + 1, s.nama, s.nis, s.kelas,
-        ...groups.flatMap((g) => [...g.tasks.map((t) => cell(t, s).text), avgOf(g.tasks, s) ?? '–']),
-        avgOf(tasks, s) ?? '–',
-      ].join('\t'),
-    )
+    const body = students.map((s, i) => [
+      i + 1, s.nama, s.nis, s.kelas,
+      ...groups.flatMap((g) => [...g.tasks.map((t) => cell(t, s).text), avgOf(g.tasks, s) ?? '–']),
+      avgOf(tasks, s) ?? '–',
+    ])
+    return { head, body }
+  }
+  const eksporCsv = () => {
+    const { head, body } = tabelData()
+    const namaKelas = kelas ? namaBerkasAman(kelas) : 'semua-kelas'
+    const namaMapel = mapel ? namaBerkasAman(mapel) : 'semua-mapel'
+    unduhCsv(`rekap-${namaKelas}-${namaMapel}-${tanggalHariIni()}.csv`, head, body)
+  }
+  const copyTable = async () => {
+    const { head, body } = tabelData()
     try {
-      await navigator.clipboard.writeText([head.join('\t'), ...body].join('\n'))
+      await navigator.clipboard.writeText([head.join('\t'), ...body.map((r) => r.join('\t'))].join('\n'))
       setMsg(`${students.length} siswa tersalin. Tempel di Excel atau Word.`)
     } catch {
       setMsg('Browser menolak akses clipboard di tampilan ini.')
@@ -898,6 +938,7 @@ export function Recap() {
             </select>
           </div>
           <button className="btn btn-ghost" onClick={copyTable}><Icon n="copy" /> Salin tabel</button>
+          <button className="btn btn-ghost" onClick={eksporCsv} disabled={students.length === 0} title="Unduh rekap sebagai CSV (bisa dibuka di Excel)"><Icon n="upload" /> Ekspor CSV</button>
           <button className="btn btn-primary" onClick={printNow}><Icon n="eye" /> Cetak rekap</button>
         </div>
       </div>
@@ -931,7 +972,7 @@ export function Recap() {
                 <tr>
                   {groups.flatMap((g) => [
                     ...g.tasks.map((t) => <th key={t.id} className={th + ' max-w-[180px]'} style={{ whiteSpace: 'normal' }}>{t.judul}<div className="font-normal normal-case text-[10px]" style={{ color: 'var(--ink-soft)' }}>KKM {t.kkm}</div></th>),
-                    <th key={g.mapel + '-avg'} className={th} style={{ background: '#f0ebdc' }}>Rata-rata</th>,
+                    <th key={g.mapel + '-avg'} className={th} style={{ background: 'var(--tint-2)' }}>Rata-rata</th>,
                   ])}
                 </tr>
               </thead>
@@ -947,7 +988,7 @@ export function Recap() {
                         const c = cell(t, s)
                         return <td key={t.id} className="td text-center tabular-nums font-bold" style={{ color: toneColor[c.tone] }}>{c.text}</td>
                       }),
-                      <td key={g.mapel + '-avg'} className="td text-center tabular-nums font-bold" style={{ background: '#faf7ef' }}>{avgOf(g.tasks, s) ?? '–'}</td>,
+                      <td key={g.mapel + '-avg'} className="td text-center tabular-nums font-bold" style={{ background: 'var(--tint-1)' }}>{avgOf(g.tasks, s) ?? '–'}</td>,
                     ])}
                     <td className="td text-center tabular-nums font-bold">{avgOf(tasks, s) ?? '–'}</td>
                   </tr>

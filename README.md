@@ -1,9 +1,32 @@
-# UjianKu · CBT Sekolah
+# React + TypeScript + Vite
 
-Aplikasi ujian berbasis peramban untuk guru dan siswa (React 18 + TypeScript + Vite + Tailwind), dengan database dan login di Supabase.
+This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
-- Panduan lengkap: `tutorial.html` (paket terpisah) dan `supabase/README.md` untuk bagian database.
-- Jalankan lokal: `pnpm install` lalu `pnpm dev`.
-- Bangun untuk produksi: `pnpm build`.
-- Variabel lingkungan: salin `.env.example` menjadi `.env.local`, lalu isi `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`.
-- Jangan pernah memasukkan `service_role` key ke repositori atau ke variabel `VITE_*`.
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the Oxlint configuration
+
+If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+
+```json
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+  }
+}
+```
+
+See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.

@@ -33,13 +33,13 @@ export default function Login() {
 
   return (
     <div className="min-h-full grid lg:grid-cols-[1.05fr_1fr]">
-      <aside className="px-6 py-8 sm:px-12 sm:py-12 flex flex-col justify-between" style={{ background: 'var(--ink)', color: '#efe9da' }}>
+      <aside className="px-6 py-8 sm:px-12 sm:py-12 flex flex-col justify-between" style={{ background: 'var(--aside)', color: 'var(--aside-fg)' }}>
         <div className="flex items-center gap-2.5">
-          <div className="grid place-items-center rounded-md" style={{ width: 34, height: 34, background: 'var(--amber)', color: '#fff' }}>
+          <div className="grid place-items-center rounded-md" style={{ width: 34, height: 34, background: 'var(--amber)', color: 'var(--on-amber)' }}>
             <Icon n="task" s={18} />
           </div>
           <span className="font-display text-xl font-bold tracking-tight">UjianKu</span>
-          <span className="chip" style={{ background: 'rgba(255,255,255,.12)', color: '#efe9da' }}>CBT</span>
+          <span className="chip" style={{ background: 'rgba(255,255,255,.12)', color: 'var(--aside-fg)' }}>CBT</span>
         </div>
 
         <div className="my-10 lg:my-0 max-w-md">
@@ -70,7 +70,7 @@ export default function Login() {
           <h2 className="font-display text-2xl font-bold">Masuk</h2>
           <p className="text-sm mt-1" style={{ color: 'var(--ink-soft)' }}>Pilih peran Anda untuk melanjutkan.</p>
 
-          <div className="mt-5 grid grid-cols-2 p-1 rounded-lg" style={{ background: '#ebe6d8' }} role="tablist">
+          <div className="mt-5 grid grid-cols-2 p-1 rounded-lg" style={{ background: 'var(--chip)' }} role="tablist">
             {(['siswa', 'guru'] as const).map((r) => (
               <button
                 key={r}

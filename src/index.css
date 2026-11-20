@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Token warna. Tema Tosca (default) ada di :root; tema lain menimpa token ini. */
 :root {
   --paper: #f5f2ea;
   --card: #fffdf8;
@@ -11,12 +12,25 @@
   --teal: #0e5a58;
   --teal-dark: #0a4341;
   --teal-tint: #e0eeea;
+  --on-teal: #ffffff;
   --amber: #c98200;
   --amber-tint: #fbefd2;
+  --amber-ink: #8a5a00;
+  --on-amber: #ffffff;
   --red: #b3361f;
   --red-tint: #f8e1dc;
   --green: #2d7a3e;
   --green-tint: #dff0e2;
+  --chip: #ebe6d8;
+  --hover: #efe9da;
+  --row: #ebe5d6;
+  --input: #ffffff;
+  --track: #e6dfcd;
+  --tint-1: #faf7ef;
+  --tint-2: #f0ebdc;
+  --aside: #17262b;
+  --aside-fg: #efe9da;
+  color-scheme: light;
 }
 
 html, body, #root { height: 100%; }
@@ -33,37 +47,41 @@ body {
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; padding: .55rem .95rem; border-radius: 8px; font-weight: 600; font-size: .875rem; border: 1px solid transparent; cursor: pointer; transition: background .12s, border-color .12s; white-space: nowrap; }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
-  .btn-primary { background: var(--teal); color: #fff; }
+  .btn-primary { background: var(--teal); color: var(--on-teal); }
   .btn-primary:hover:not(:disabled) { background: var(--teal-dark); }
   .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
-  .btn-ghost:hover:not(:disabled) { background: #efe9da; }
-  .btn-danger { background: transparent; color: var(--red); border-color: #e3b9b0; }
+  .btn-ghost:hover:not(:disabled) { background: var(--hover); }
+  .btn-danger { background: transparent; color: var(--red); border-color: var(--red-tint); }
   .btn-danger:hover:not(:disabled) { background: var(--red-tint); }
-  .btn-amber { background: var(--amber); color: #fff; }
-  .btn-amber:hover:not(:disabled) { background: #a96d00; }
+  .btn-amber { background: var(--amber); color: var(--on-amber); }
+  .btn-amber:hover:not(:disabled) { filter: brightness(.92); }
   .btn-sm { padding: .3rem .6rem; font-size: .8rem; }
-  .input { width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: .55rem .7rem; font-size: .9rem; color: var(--ink); outline: none; }
-  .input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(14,90,88,.15); }
+  .input { width: 100%; background: var(--input); border: 1px solid var(--line); border-radius: 8px; padding: .55rem .7rem; font-size: .9rem; color: var(--ink); outline: none; }
+  .input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 18%, transparent); }
   .label { display: block; font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: .3rem; }
   .chip { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 700; }
   .chip-green { background: var(--green-tint); color: var(--green); }
   .chip-red { background: var(--red-tint); color: var(--red); }
-  .chip-amber { background: var(--amber-tint); color: #8a5a00; }
+  .chip-amber { background: var(--amber-tint); color: var(--amber-ink); }
   .chip-teal { background: var(--teal-tint); color: var(--teal); }
-  .chip-gray { background: #ebe6d8; color: var(--ink-soft); }
+  .chip-gray { background: var(--chip); color: var(--ink-soft); }
   .th { text-align: left; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-soft); padding: .6rem .8rem; border-bottom: 1px solid var(--line); }
-  .td { padding: .65rem .8rem; border-bottom: 1px solid #ebe5d6; font-size: .88rem; vertical-align: middle; }
+  .td { padding: .65rem .8rem; border-bottom: 1px solid var(--row); font-size: .88rem; vertical-align: middle; }
 }
+
+/* Scrollbar tersembunyi untuk navigasi yang bisa digeser */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 /* Ruang ujian: tidak bisa seleksi / salin */
 .exam-lock, .exam-lock * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .exam-lock input, .exam-lock textarea { -webkit-user-select: text; user-select: text; }
 @media print { .exam-lock { display: none !important; } }
 
-/* Cetak rekap: sembunyikan navigasi dan filter */
+/* Cetak rekap: sembunyikan navigasi dan filter. Selalu cetak dengan latar putih. */
 @media print {
   .no-print { display: none !important; }
-  body, html, #root { background: #fff !important; height: auto; }
+  body, html, #root { background: #fff !important; color: #000 !important; height: auto; }
   .print-area { border: none !important; box-shadow: none !important; padding: 0 !important; }
   .print-area table { font-size: 11px; }
   .print-area .th, .print-area .td { padding: .35rem .45rem; }
@@ -76,4 +94,66 @@ body {
   --teal: #047857;
   --teal-dark: #065f46;
   --teal-tint: #d7f2e5;
+}
+
+/* Tema Blue Sky */
+[data-theme="bluesky"] {
+  --paper: #e8f3fc;
+  --card: #ffffff;
+  --ink: #10263d;
+  --ink-soft: #4f6880;
+  --line: #c5daec;
+  --teal: #1d6fbf;
+  --teal-dark: #15559a;
+  --teal-tint: #dcecfb;
+  --on-teal: #ffffff;
+  --amber: #c98200;
+  --amber-tint: #fbefd2;
+  --amber-ink: #7a4a00;
+  --on-amber: #ffffff;
+  --red: #b3361f;
+  --red-tint: #f8e1dc;
+  --green: #2d7a3e;
+  --green-tint: #dff0e2;
+  --chip: #dbe9f6;
+  --hover: #d6e7f7;
+  --row: #e1edf8;
+  --input: #ffffff;
+  --track: #d3e4f3;
+  --tint-1: #f3f9fe;
+  --tint-2: #e6f0fa;
+  --aside: #123052;
+  --aside-fg: #e8f3fc;
+  color-scheme: light;
+}
+
+/* Tema Dark */
+[data-theme="dark"] {
+  --paper: #0f1416;
+  --card: #171e21;
+  --ink: #e4ecee;
+  --ink-soft: #94a4a8;
+  --line: #2a3538;
+  --teal: #2fb3a8;
+  --teal-dark: #27a095;
+  --teal-tint: #173b39;
+  --on-teal: #06201e;
+  --amber: #e0a526;
+  --amber-tint: #3a2d0f;
+  --amber-ink: #f2c25c;
+  --on-amber: #1a1200;
+  --red: #ff8a70;
+  --red-tint: #3d1d17;
+  --green: #5ccb74;
+  --green-tint: #173a22;
+  --chip: #262f33;
+  --hover: #222b2e;
+  --row: #222b2e;
+  --input: #10171a;
+  --track: #2a3538;
+  --tint-1: #181f22;
+  --tint-2: #20282b;
+  --aside: #0a0f11;
+  --aside-fg: #e4ecee;
+  color-scheme: dark;
 }

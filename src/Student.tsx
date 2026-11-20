@@ -72,7 +72,7 @@ export default function Student({ studentId }: { studentId: string }) {
       <header className="border-b" style={{ background: 'var(--card)', borderColor: 'var(--line)' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 min-h-[56px] py-2 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="grid place-items-center rounded-md" style={{ width: 28, height: 28, background: 'var(--teal)', color: '#fff' }}><Icon n="task" s={15} /></div>
+            <div className="grid place-items-center rounded-md" style={{ width: 28, height: 28, background: 'var(--teal)', color: 'var(--on-teal)' }}><Icon n="task" s={15} /></div>
             <span className="font-display font-bold text-lg">UjianKu</span>
           </div>
           <div className="flex items-center gap-2"><ThemeSwitch /><button className="btn btn-ghost btn-sm" onClick={logout}><Icon n="logout" s={14} /> Keluar</button></div>
@@ -219,7 +219,7 @@ function MyRecap({ studentId, kelas }: { studentId: string; kelas: string }) {
   const tiles: [string, string | number, string][] = [
     ['Total tugas', rows.length, 'var(--ink)'],
     ['Selesai', cnt.selesai, 'var(--green)'],
-    ['Belum dikerjakan', cnt.belum, cnt.belum ? '#8a5a00' : 'var(--ink)'],
+    ['Belum dikerjakan', cnt.belum, cnt.belum ? 'var(--amber-ink)' : 'var(--ink)'],
     ['Terlewat / terkunci', cnt.terlewat, cnt.terlewat ? 'var(--red)' : 'var(--ink)'],
     ['Rata-rata nilai', avg ?? '–', 'var(--ink)'],
   ]
@@ -252,7 +252,7 @@ function MyRecap({ studentId, kelas }: { studentId: string; kelas: string }) {
             aria-selected={f === k}
             onClick={() => setF(k)}
             className="rounded-full px-3 py-1 text-xs font-bold"
-            style={f === k ? { background: 'var(--teal)', color: '#fff', border: '1px solid var(--teal)' } : { background: '#fff', color: 'var(--ink)', border: '1px solid var(--line)' }}
+            style={f === k ? { background: 'var(--teal)', color: 'var(--on-teal)', border: '1px solid var(--teal)' } : { background: 'var(--card)', color: 'var(--ink)', border: '1px solid var(--line)' }}
           >
             {l}
           </button>

@@ -69,7 +69,7 @@ export function Settings() {
           </p>
         )}
 
-        <div className="rounded-lg px-3 py-2.5 text-xs mt-4 flex gap-2" style={{ background: 'var(--amber-tint)', color: '#7a4f00' }}>
+        <div className="rounded-lg px-3 py-2.5 text-xs mt-4 flex gap-2" style={{ background: 'var(--amber-tint)', color: 'var(--amber-ink)' }}>
           <Icon n="alert" s={15} className="mt-0.5 shrink-0" />
           <span>Hanya <b>anon / publishable key</b> yang boleh dipakai di aplikasi. <b>service_role key</b> dan password database jangan pernah dimasukkan ke file aplikasi, karena nilainya bisa dibaca siapa pun yang membuka halaman.</span>
         </div>

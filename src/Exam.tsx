@@ -183,8 +183,8 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
             aria-current={cur ? 'step' : undefined}
             className="rounded-md text-sm font-bold py-2 disabled:cursor-default"
             style={{
-              background: done ? 'var(--teal)' : '#fff',
-              color: done ? '#fff' : 'var(--ink)',
+              background: done ? 'var(--teal)' : 'var(--card)',
+              color: done ? 'var(--on-teal)' : 'var(--ink)',
               border: '2px solid ' + (cur ? 'var(--amber)' : done ? 'var(--teal)' : 'var(--line)'),
             }}
           >
@@ -213,7 +213,7 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
             <button className="btn btn-ghost btn-sm lg:hidden" onClick={() => setGridOpen(true)} aria-label="Daftar soal"><Icon n="grid" s={15} /></button>
           )}
         </div>
-        <div style={{ height: 3, background: '#e6dfcd' }}>
+        <div style={{ height: 3, background: 'var(--track)' }}>
           <div style={{ width: `${(answeredCount / total) * 100}%`, height: 3, background: 'var(--teal)', transition: 'width .2s' }} />
         </div>
       </header>
@@ -228,7 +228,7 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
                 onClick={() => toggleRagu(attemptId, qid)}
                 aria-pressed={(a.ragu ?? []).includes(qid)}
                 className="btn btn-sm"
-                style={(a.ragu ?? []).includes(qid) ? { background: 'var(--amber-tint)', color: '#8a5a00', border: '1px solid var(--amber)' } : { background: '#fff', color: 'var(--ink)', border: '1px solid var(--line)' }}
+                style={(a.ragu ?? []).includes(qid) ? { background: 'var(--amber-tint)', color: 'var(--amber-ink)', border: '1px solid var(--amber)' } : { background: 'var(--card)', color: 'var(--ink)', border: '1px solid var(--line)' }}
               >
                 <Icon n="alert" s={13} /> Ragu-ragu
               </button>
@@ -251,9 +251,9 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
                     aria-checked={sel}
                     onClick={() => answer(attemptId, qid, orig)}
                     className="w-full text-left flex items-start gap-3 rounded-lg px-4 py-3.5 transition-colors"
-                    style={{ border: '2px solid ' + (sel ? 'var(--teal)' : 'var(--line)'), background: sel ? 'var(--teal-tint)' : '#fff' }}
+                    style={{ border: '2px solid ' + (sel ? 'var(--teal)' : 'var(--line)'), background: sel ? 'var(--teal-tint)' : 'var(--card)' }}
                   >
-                    <span className="shrink-0 grid place-items-center rounded-full font-bold text-sm" style={{ width: 28, height: 28, background: sel ? 'var(--teal)' : '#efe9da', color: sel ? '#fff' : 'var(--ink-soft)' }}>
+                    <span className="shrink-0 grid place-items-center rounded-full font-bold text-sm" style={{ width: 28, height: 28, background: sel ? 'var(--teal)' : 'var(--hover)', color: sel ? 'var(--on-teal)' : 'var(--ink-soft)' }}>
                       {String.fromCharCode(65 + pos)}
                     </span>
                     <span className="pt-0.5 text-[15px] sm:text-base">{q.options[orig]}</span>
@@ -298,7 +298,7 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
           {answeredCount < total && <span style={{ color: 'var(--red)' }}> {total - answeredCount} soal belum dijawab.</span>}
         </p>
         <p className="text-xs mt-2" style={{ color: 'var(--ink-soft)' }}>Setelah dikirim, jawaban tidak dapat diubah.</p>
-        {(a.ragu?.length ?? 0) > 0 && <p className="text-sm mt-2 font-semibold" style={{ color: '#8a5a00' }}>{a.ragu!.length} soal masih ditandai ragu-ragu.</p>}
+        {(a.ragu?.length ?? 0) > 0 && <p className="text-sm mt-2 font-semibold" style={{ color: 'var(--amber-ink)' }}>{a.ragu!.length} soal masih ditandai ragu-ragu.</p>}
         <div className="flex justify-end gap-2 mt-5">
           <button className="btn btn-ghost" onClick={() => setFinishOpen(false)}>Periksa lagi</button>
           <button className="btn btn-primary" onClick={() => { setFinishOpen(false); finishAttempt(attemptId) }}>Ya, kirim</button>
@@ -350,7 +350,7 @@ function Timer({ endsAt, onExpire }: { endsAt: number; onExpire: () => void }) {
   return (
     <div
       className="flex items-center gap-1.5 font-bold tabular-nums rounded-md px-2.5 py-1.5"
-      style={{ background: urgent ? 'var(--red-tint)' : warn ? 'var(--amber-tint)' : '#efe9da', color: urgent ? 'var(--red)' : warn ? '#8a5a00' : 'var(--ink)' }}
+      style={{ background: urgent ? 'var(--red-tint)' : warn ? 'var(--amber-tint)' : 'var(--hover)', color: urgent ? 'var(--red)' : warn ? 'var(--amber-ink)' : 'var(--ink)' }}
       role="timer"
       aria-label="Sisa waktu"
     >
