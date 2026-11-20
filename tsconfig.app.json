@@ -30,9 +30,5 @@
   },
   "include": [
     "src"
-  ],
-  "exclude": [
-    "src/components/ui/calendar.tsx",
-    "src/components/ui/resizable.tsx"
   ]
 }
