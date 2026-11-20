@@ -8,3 +8,4 @@ Aplikasi ujian berbasis peramban untuk guru dan siswa (React 18 + TypeScript + V
 - Variabel lingkungan: salin `.env.example` menjadi `.env.local`. Isi hanya `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`.
 - Jangan pernah memasukkan `service_role` key ke repositori atau ke variabel `VITE_*`.
 # ujianku
+# ujianku
