@@ -462,7 +462,17 @@ export function fraksiSoal(q: Question, ans: number[] = []): number {
   return sameSet(ans, q.key) ? 1 : 0
 }
 export function correctCount(task: Task, a: Attempt): number {
+  if (a.benar !== undefined) return a.benar // mode Supabase: dihitung di server
   return task.questions.filter((qq) => fraksiSoal(qq, a.answers[qq.id]) === 1).length
+}
+/** Jumlah pelanggaran. Mode Supabase membawa angkanya; daftar lengkapnya dimuat saat dibuka. */
+export function jumlahPelanggaranOf(a: Attempt): number {
+  return a.jumlahPelanggaran ?? a.violations.length
+}
+/** Daftar pelanggaran satu percobaan untuk guru. Lokal: dari memori. Supabase: dari server. */
+export async function muatPelanggaran(a: Attempt): Promise<Violation[]> {
+  if (!remoteOn) return a.violations
+  return remote.pelanggaranGuru(a.id)
 }
 export function computeScore(task: Task, a: Attempt): number {
   if (!task.questions.length) return 0

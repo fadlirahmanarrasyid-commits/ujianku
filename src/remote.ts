@@ -143,23 +143,20 @@ function mapAttempts(
 /** Memuat seluruh data yang boleh dilihat guru yang sedang masuk. */
 export async function loadGuruSnapshot(): Promise<Snapshot> {
   const sb = client()
-  const [kelasR, profR, tugasR, tkR, soalR, bankR, percR, jawR, pelR, nilR] = await Promise.all([
+  // Ringkasan hasil dihitung di server (migrasi 0008): jawaban dan pelanggaran tidak diunduh semua.
+  const [kelasR, profR, tugasR, tkR, soalR, bankR, ringkasR] = await Promise.all([
     sb.from('kelas').select('id,nama'),
     sb.from('profiles').select('id,nama,nis,kelas_id,terkunci').eq('peran', 'siswa'),
     sb.from('tugas').select('*'),
     sb.from('tugas_kelas').select('tugas_id,kelas_id'),
     sb.from('soal').select('*, kunci_soal(kunci)').order('urutan'),
     sb.from('bank_soal').select('*'),
-    sb.from('percobaan').select('*'),
-    sb.from('jawaban').select('*'),
-    sb.from('pelanggaran').select('*').order('waktu'),
-    sb.from('nilai').select('*'),
+    sb.rpc('ringkasan_guru'),
   ])
-  for (const r of [kelasR, profR, tugasR, tkR, soalR, bankR, percR, jawR, pelR, nilR]) fail(r.error)
+  for (const r of [kelasR, profR, tugasR, tkR, soalR, bankR, ringkasR]) fail(r.error)
 
   const kelasNama = new Map<string, string>((kelasR.data ?? []).map((k: Row) => [k.id, k.nama]))
   const namaKelas = (id: string | null) => (id ? kelasNama.get(id) ?? '' : '')
-  const nilaiBy = new Map<string, number>((nilR.data ?? []).map((n: Row) => [n.percobaan_id, n.skor]))
 
   const students: Student[] = (profR.data ?? []).map((p: Row) => ({
     id: p.id,
@@ -186,8 +183,37 @@ export async function loadGuruSnapshot(): Promise<Snapshot> {
     gambar: b.gambar_url ?? undefined,
   }))
 
-  const attempts = mapAttempts(percR.data ?? [], jawR.data ?? [], pelR.data ?? [], (p) => nilaiBy.get(p.id))
+  const attempts = (ringkasR.data ?? []).map(attemptDariRingkasan)
   return { students, tasks, bank, attempts }
+}
+
+function attemptDariRingkasan(r: Row): Attempt {
+  return {
+    id: r.id,
+    taskId: r.tugas_id,
+    studentId: r.siswa_id,
+    startedAt: ms(r.mulai_at) ?? 0,
+    endsAt: ms(r.selesai_batas) ?? 0,
+    finishedAt: ms(r.selesai_at) ?? undefined,
+    order: r.urutan_soal ?? [],
+    optionOrder: r.urutan_opsi ?? {},
+    answers: {},
+    cursor: 0,
+    violations: [],
+    status: r.status,
+    score: r.skor ?? undefined,
+    resets: 0,
+    ragu: [],
+    benar: r.benar ?? 0,
+    jumlahPelanggaran: r.jumlah_pelanggaran ?? 0,
+  }
+}
+
+/** Daftar pelanggaran satu percobaan, dimuat saat guru membuka catatannya. */
+export async function pelanggaranGuru(percobaanId: string): Promise<Violation[]> {
+  const { data, error } = await client().rpc('pelanggaran_guru', { p_percobaan: percobaanId })
+  fail(error)
+  return (data ?? []).map((v: Row) => ({ t: ms(v.waktu) ?? 0, type: v.tipe as ViolationType, note: v.catatan ?? undefined }))
 }
 
 /* ----------------------------- muat: siswa ----------------------------- */

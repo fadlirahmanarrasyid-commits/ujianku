@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import type { Attempt, QType, Question, Student, Task } from './types'
+import type { Attempt, QType, Question, Student, Task, Violation } from './types'
 import {
-  correctCount, emptyQuestion, emptyTask, isExpired, removeTask, resetAttempt, saveBank, saveTask,
+  correctCount, emptyQuestion, emptyTask, isExpired, jumlahPelanggaranOf, muatPelanggaran, removeTask, resetAttempt, saveBank, saveTask,
   taskAudience, toggleTask, uid, unlockStudent, useDB,
 } from './store'
 import { parseAiken } from './aiken'
@@ -636,6 +636,20 @@ export function Results({ taskId, setTaskId }: { taskId: string; setTaskId: (id:
   const task = db.tasks.find((t) => t.id === taskId) ?? db.tasks[0]
   const [reset, setReset] = useState<{ a: Attempt; s: Student } | null>(null)
   const [log, setLog] = useState<{ a: Attempt; s: Student } | null>(null)
+  const [logList, setLogList] = useState<Violation[]>([])
+  const [logMuat, setLogMuat] = useState(false)
+  const bukaLog = async (a: Attempt, s: Student) => {
+    setLog({ a, s })
+    setLogList([])
+    setLogMuat(true)
+    try {
+      setLogList(await muatPelanggaran(a))
+    } catch {
+      setLogList(a.violations)
+    } finally {
+      setLogMuat(false)
+    }
+  }
   const [kelasF, setKelasF] = useState('')
   const [statusF, setStatusF] = useState('')
 
@@ -734,8 +748,8 @@ export function Results({ taskId, setTaskId }: { taskId: string; setTaskId: (id:
                     </td>
                     <td className="td tabular-nums">{a ? `${correctCount(task, a)}/${task.questions.length}` : '–'}</td>
                     <td className="td">
-                      {a && a.violations.length > 0 ? (
-                        <button className="chip chip-amber cursor-pointer" onClick={() => setLog({ a, s })}><Icon n="alert" s={11} /> {a.violations.length} · lihat</button>
+                      {a && jumlahPelanggaranOf(a) > 0 ? (
+                        <button className="chip chip-amber cursor-pointer" onClick={() => bukaLog(a, s)}><Icon n="alert" s={11} /> {jumlahPelanggaranOf(a)} · lihat</button>
                       ) : <span style={{ color: 'var(--ink-soft)' }}>0</span>}
                     </td>
                     <td className="td">
@@ -761,8 +775,9 @@ export function Results({ taskId, setTaskId }: { taskId: string; setTaskId: (id:
       </Modal>
 
       <Modal open={!!log} onClose={() => setLog(null)} title={`Catatan pelanggaran · ${log?.s.nama ?? ''}`}>
+        {logMuat && <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Memuat catatan…</p>}
         <ul className="space-y-2">
-          {log?.a.violations.map((v, i) => (
+          {!logMuat && logList.map((v, i) => (
             <li key={i} className="flex items-center justify-between text-sm rounded-lg px-3 py-2" style={{ background: 'var(--amber-tint)' }}>
               <span className="font-semibold">{VIOLATION_LABEL[v.type] ?? v.type}{v.note ? ` (${v.note})` : ''}</span>
               <span className="tabular-nums text-xs" style={{ color: 'var(--ink-soft)' }}>{new Date(v.t).toLocaleTimeString('id-ID')}</span>

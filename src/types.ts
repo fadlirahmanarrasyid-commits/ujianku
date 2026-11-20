@@ -76,6 +76,9 @@ export interface Attempt {
   score?: number
   resets: number
   ragu?: string[] // qid yang ditandai ragu-ragu
+  /** Mode Supabase (ringkas): jumlah soal benar dan jumlah pelanggaran dihitung di server. */
+  benar?: number
+  jumlahPelanggaran?: number
 }
 
 export interface DB {
