@@ -4,7 +4,7 @@ import { emptyQuestion, removeBank, saveBank, uid, useDB } from './store'
 import { parseAiken } from './aiken'
 import { bacaBerkasAiken } from './aikenBerkas'
 import { QuestionCard } from './Tasks'
-import { Empty, Icon, Modal } from './ui'
+import { Empty, Icon, Modal, usePagination } from './ui'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -66,6 +66,8 @@ export function BankPage() {
       <Icon n="plus" s={15} />
     </button>
   )
+
+  const pg = usePagination(groups, [kelas, mapel, q].join('|'))
 
   return (
     <section>
@@ -188,7 +190,7 @@ export function BankPage() {
           ) : (
             <>
             <div className="space-y-3 md:hidden">
-              {groups.map((g) => {
+              {pg.items.map((g) => {
                 const c = (k: string) => g.items.filter((x) => x.tipe === k).length
                 return (
                   <div key={g.key} className="card p-4 min-w-0">
@@ -210,6 +212,7 @@ export function BankPage() {
               })}
             </div>
 
+            <div className="card md:hidden">{pg.pager}</div>
             <div className="card overflow-x-auto hidden md:block">
               <table className="w-full text-sm" style={{ tableLayout: 'fixed', minWidth: 560 }}>
                 <thead>
@@ -223,7 +226,7 @@ export function BankPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {groups.map((g) => {
+                  {pg.items.map((g) => {
                     const c = (k: string) => g.items.filter((x) => x.tipe === k).length
                     return (
                       <tr key={g.key} className="cursor-pointer" onClick={() => setOpen(g.key)} style={{ cursor: 'pointer' }}>
@@ -243,6 +246,7 @@ export function BankPage() {
                   })}
                 </tbody>
               </table>
+              {pg.pager}
             </div>
             </>
           )}

@@ -5,7 +5,7 @@ import { addStudents, logout, remoteOn, removeStudent, resetAll, unlockStudent, 
 import { Recap, Results, Tasks } from './Tasks'
 import { BankPage } from './Bank'
 import { Settings } from './Settings'
-import { Empty, Icon, Modal, ThemeSwitch } from './ui'
+import { Empty, Icon, Modal, ThemeSwitch, usePagination } from './ui'
 
 type Tab = 'beranda' | 'tugas' | 'siswa' | 'hasil' | 'bank' | 'rekap' | 'pengaturan'
 
@@ -82,6 +82,7 @@ function Students() {
   const [editFor, setEditFor] = useState<Student | null>(null)
   const kelasList = useMemo(() => [...new Set(db.students.map((s) => s.kelas))].sort(), [db.students])
   const rows = db.students.filter((s) => (!kelas || s.kelas === kelas) && (s.nama + s.nis).toLowerCase().includes(q.toLowerCase()))
+  const pg = usePagination(rows, [q, kelas].join('|'))
 
   return (
     <section>
@@ -111,7 +112,7 @@ function Students() {
             <table className="w-full min-w-[640px]">
               <thead><tr><th className="th">Nama</th><th className="th">NIS</th><th className="th">Kelas</th><th className="th">Status</th><th className="th text-right">Aksi</th></tr></thead>
               <tbody>
-                {rows.map((s) => (
+                {pg.items.map((s) => (
                   <tr key={s.id}>
                     <td className="td font-semibold">{s.nama}</td>
                     <td className="td tabular-nums">{s.nis}</td>
@@ -131,6 +132,7 @@ function Students() {
             </table>
           </div>
         )}
+        {pg.pager}
       </div>
 
       {pinFor && <PinDialog key={pinFor.id} s={pinFor} onClose={() => setPinFor(null)} />}

@@ -131,6 +131,50 @@ export async function enterFS(): Promise<boolean> {
   }
 }
 
+/* ---------- paginasi di sisi tampilan ---------- */
+export const PAGE_SIZES = [10, 20, 50]
+
+/** Membagi daftar per halaman. Halaman kembali ke 1 setiap resetKey berubah (mis. filter atau pencarian). */
+export function usePagination<T>(items: T[], resetKey: string, defaultSize = 20) {
+  const [st, setSt] = useState({ page: 0, size: defaultSize, key: resetKey })
+  const size = st.size
+  const pages = Math.max(1, Math.ceil(items.length / size))
+  const page = Math.min(st.key === resetKey ? st.page : 0, pages - 1)
+  const pager = (
+    <Pager
+      total={items.length}
+      page={page}
+      pages={pages}
+      size={size}
+      onPage={(p) => setSt({ page: p, size, key: resetKey })}
+      onSize={(n) => setSt({ page: 0, size: n, key: resetKey })}
+    />
+  )
+  return { items: items.slice(page * size, page * size + size), pager }
+}
+
+export function Pager({ total, page, pages, size, onPage, onSize }: { total: number; page: number; pages: number; size: number; onPage: (p: number) => void; onSize: (n: number) => void }) {
+  if (total <= PAGE_SIZES[0]) return null
+  const from = page * size + 1
+  const to = Math.min(total, (page + 1) * size)
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 border-t text-xs" style={{ borderColor: 'var(--line)', color: 'var(--ink-soft)' }}>
+      <span className="tabular-nums">{from}–{to} dari {total}</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-1.5">
+          Baris
+          <select className="input" style={{ width: 'auto', padding: '.2rem .4rem' }} value={size} onChange={(e) => onSize(Number(e.target.value))} aria-label="Jumlah baris per halaman">
+            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <button className="btn btn-ghost btn-sm" disabled={page <= 0} onClick={() => onPage(page - 1)}>‹ Sebelumnya</button>
+        <span className="tabular-nums font-semibold" style={{ color: 'var(--ink)' }}>{page + 1}/{pages}</span>
+        <button className="btn btn-ghost btn-sm" disabled={page >= pages - 1} onClick={() => onPage(page + 1)}>Berikutnya ›</button>
+      </div>
+    </div>
+  )
+}
+
 /* ---------- tema warna ---------- */
 export type Theme = 'default' | 'zamrud' | 'bluesky' | 'dark'
 const THEME_KEY = 'cbt.theme'

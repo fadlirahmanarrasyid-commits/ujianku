@@ -8,7 +8,7 @@ import { parseAiken } from './aiken'
 import { bacaBerkasAiken } from './aikenBerkas'
 import { pilihGambar } from './lib/gambar'
 import { namaBerkasAman, tanggalHariIni, unduhCsv } from './exportCsv'
-import { Empty, Icon, Modal, Toggle, VIOLATION_LABEL } from './ui'
+import { Empty, Icon, Modal, Toggle, VIOLATION_LABEL, usePagination } from './ui'
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -41,8 +41,6 @@ export function Tasks({ onResults }: { onResults: (id: string) => void }) {
   const [kelasF, setKelasF] = useState('')
   const [mapelF, setMapelF] = useState('')
 
-  if (editing) return <TaskEditor initial={editing} onClose={() => setEditing(null)} />
-
   const kelasList = [...new Set([...db.students.map((x) => x.kelas), ...db.tasks.flatMap((x) => x.kelas)])].filter(Boolean).sort()
   const mapelList = [...new Set(db.tasks.map((x) => x.mapel).filter(Boolean))].sort()
   const rows = db.tasks.filter(
@@ -66,6 +64,9 @@ export function Tasks({ onResults }: { onResults: (id: string) => void }) {
       <button className="btn btn-danger btn-sm px-1.5" aria-label="Hapus" title="Hapus" onClick={() => setDel(t)}><Icon n="trash" s={14} /></button>
     </div>
   )
+
+  const pg = usePagination(rows, [q, kelasF, mapelF].join('|'))
+  if (editing) return <TaskEditor initial={editing} onClose={() => setEditing(null)} />
 
   return (
     <section>
@@ -95,7 +96,7 @@ export function Tasks({ onResults }: { onResults: (id: string) => void }) {
       <div className="md:hidden space-y-3">
         {rows.length === 0 ? (
           <div className="card"><Empty icon="task" title={filtered ? "Tidak ada penugasan yang cocok" : "Belum ada penugasan"} hint={filtered ? "Ubah pencarian atau filter kelas dan mapel." : "Buat tugas pertama Anda."} /></div>
-        ) : rows.map((t) => {
+        ) : pg.items.map((t) => {
           const peserta = db.attempts.filter((a) => a.taskId === t.id).length
           const [label, cls] = statusOf(t)
           return (
@@ -117,6 +118,8 @@ export function Tasks({ onResults }: { onResults: (id: string) => void }) {
         })}
       </div>
 
+      <div className="card md:hidden">{pg.pager}</div>
+
       {/* Tampilan layar sedang ke atas: tabel */}
       <div className="card overflow-hidden hidden md:block">
         {rows.length === 0 ? (
@@ -136,7 +139,7 @@ export function Tasks({ onResults }: { onResults: (id: string) => void }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((t) => {
+              {pg.items.map((t) => {
                 const peserta = db.attempts.filter((a) => a.taskId === t.id).length
                 const count = (k: QType) => t.questions.filter((x) => x.tipe === k).length
                 const [label, cls] = statusOf(t)
@@ -165,6 +168,7 @@ export function Tasks({ onResults }: { onResults: (id: string) => void }) {
             </tbody>
           </table>
         )}
+        {pg.pager}
       </div>
 
       <Modal open={!!del} onClose={() => setDel(null)} title="Hapus penugasan?">
