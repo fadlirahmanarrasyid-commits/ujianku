@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Dashboard } from './Dashboard'
 import type { Student } from './types'
 import { addStudents, logout, remoteOn, removeStudent, resetAll, unlockStudent, updateStudent, useDB } from './store'
 import { Recap, Results, Tasks } from './Tasks'
@@ -6,12 +7,13 @@ import { BankPage } from './Bank'
 import { Settings } from './Settings'
 import { Empty, Icon, Modal, ThemeSwitch } from './ui'
 
-type Tab = 'tugas' | 'siswa' | 'hasil' | 'bank' | 'rekap' | 'pengaturan'
+type Tab = 'beranda' | 'tugas' | 'siswa' | 'hasil' | 'bank' | 'rekap' | 'pengaturan'
 
 export default function Teacher() {
-  const [tab, setTab] = useState<Tab>('tugas')
+  const [tab, setTab] = useState<Tab>('beranda')
   const [resultTask, setResultTask] = useState<string>('')
   const tabs: [Tab, string, string][] = [
+    ['beranda', 'Beranda', 'chart'],
     ['tugas', 'Penugasan', 'task'],
     ['siswa', 'Siswa', 'users'],
     ['bank', 'Bank soal', 'grid'],
@@ -49,6 +51,7 @@ export default function Teacher() {
       </header>
 
       <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 flex-1">
+        {tab === 'beranda' && <Dashboard onGo={(t) => setTab(t)} />}
         {tab === 'tugas' && <Tasks onResults={(id) => { setResultTask(id); setTab('hasil') }} />}
         {tab === 'siswa' && <Students />}
         {tab === 'hasil' && <Results taskId={resultTask} setTaskId={setResultTask} />}
