@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { loginGuru, loginGuruRemote, loginSiswa, loginSiswaRemote, remoteOn } from './store'
 import { Icon, ThemeSwitch } from './ui'
+import { apakahiOS, bisaPasangOtomatis, langgananPwa, pasangAplikasi, sudahTerpasang } from './pwa'
 
 export default function Login() {
   const [role, setRole] = useState<'siswa' | 'guru'>('siswa')
@@ -8,6 +9,20 @@ export default function Login() {
   const [b, setB] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pwaInfo, setPwaInfo] = useState('')
+  const [pwaStatus, setPwaStatus] = useState<'pasang' | 'ios' | 'none'>('none')
+
+  // Tombol pasang muncul saat browser mengizinkan pemasangan, atau petunjuk untuk iPhone/iPad.
+  useEffect(() => {
+    const hitung = () => setPwaStatus(sudahTerpasang() ? 'none' : bisaPasangOtomatis() ? 'pasang' : apakahiOS() ? 'ios' : 'none')
+    hitung()
+    return langgananPwa(hitung)
+  }, [])
+
+  const pasang = async () => {
+    const hasil = await pasangAplikasi()
+    setPwaInfo(hasil === 'diterima' ? 'Aplikasi berhasil dipasang.' : hasil === 'ditolak' ? 'Pemasangan dibatalkan.' : 'Pemasangan belum tersedia di browser ini.')
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -108,8 +123,25 @@ export default function Login() {
             <button className="btn btn-primary w-full py-2.5" disabled={busy}>{busy ? 'Memeriksa…' : `Masuk sebagai ${role}`}</button>
           </form>
 
+          {pwaStatus !== 'none' && (
+            <div className="mt-6 card p-3.5 flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-bold">Pasang UjianKu</div>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--ink-soft)' }}>
+                  {pwaStatus === 'pasang'
+                    ? 'Buka seperti aplikasi biasa dari layar utama, tanpa membuka browser.'
+                    : 'Di iPhone/iPad: buka di Safari, tekan Bagikan, lalu pilih “Tambah ke Layar Utama”.'}
+                </p>
+                {pwaInfo && <p className="text-xs mt-1 font-semibold" style={{ color: 'var(--teal)' }} role="status">{pwaInfo}</p>}
+              </div>
+              {pwaStatus === 'pasang' && (
+                <button className="btn btn-primary btn-sm shrink-0" onClick={pasang}><Icon n="upload" s={14} /> Pasang aplikasi</button>
+              )}
+            </div>
+          )}
+
           {!remoteOn && (
-            <div className="mt-6 rounded-lg px-3 py-2.5 text-xs" style={{ background: 'var(--amber-tint)', color: 'var(--amber)' }} role="status">
+            <div className="mt-6 rounded-lg px-3 py-2.5 text-xs" style={{ background: 'var(--amber-tint)', color: 'var(--amber-ink)' }} role="status">
               <b>Mode lokal:</b> aplikasi belum terhubung ke Supabase, jadi akun Supabase Anda tidak bisa dipakai di sini. Di Vercel, pastikan <code>VITE_SUPABASE_URL</code> dan <code>VITE_SUPABASE_ANON_KEY</code> sudah diisi, lalu lakukan <b>Redeploy</b>.
             </div>
           )}

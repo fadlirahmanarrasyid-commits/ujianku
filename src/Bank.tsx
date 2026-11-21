@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import type { BankItem } from './types'
-import { emptyQuestion, removeBank, saveBank, uid, useDB } from './store'
+import { emptyQuestion, removeBank, renameBankGroup, saveBank, uid, useDB } from './store'
 import { parseAiken } from './aiken'
 import { bacaBerkasAiken } from './aikenBerkas'
 import { QuestionCard } from './Tasks'
@@ -32,6 +32,7 @@ export function BankPage() {
   const [edit, setEdit] = useState<BankItem | null>(null)
   const [del, setDel] = useState<BankItem | null>(null)
   const [imp, setImp] = useState(false)
+  const [grup, setGrup] = useState<Ctx | null>(null)
 
   const kelasList = [...new Set([...db.students.map((s) => s.kelas), ...db.bank.map((b) => b.kelas)].filter(Boolean))].sort()
   const mapelList = [...new Set(db.bank.map((b) => b.mapel))].sort()
@@ -83,8 +84,49 @@ export function BankPage() {
                 <span className="text-sm" style={{ color: 'var(--ink-soft)' }}>{detail.items.length} soal</span>
               </div>
             </div>
-            {addIcon(detail.ctx, 'Tambah soal ke materi ini')}
+            <div className="flex flex-wrap gap-2">
+              <button className="btn btn-ghost btn-sm" onClick={() => setGrup({ ...detail.ctx })}><Icon n="edit" s={14} /> Ubah kelas, mapel, materi</button>
+              {addIcon(detail.ctx, 'Tambah soal ke materi ini')}
+            </div>
           </div>
+
+          <Modal open={!!grup} onClose={() => setGrup(null)} title="Ubah kelas, mapel, dan materi">
+            {grup && (
+              <>
+                <p className="text-sm mb-4" style={{ color: 'var(--ink-soft)' }}>
+                  Perubahan ini berlaku untuk semua {detail.items.length} soal di materi ini.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Kelas">
+                    <input className="input" list="grup-kelas" value={grup.kelas} onChange={(e) => setGrup({ ...grup, kelas: e.target.value })} placeholder="kosongkan = umum" />
+                  </Field>
+                  <Field label="Mapel">
+                    <input className="input" list="grup-mapel" value={grup.mapel} onChange={(e) => setGrup({ ...grup, mapel: e.target.value })} />
+                  </Field>
+                  <Field label="Materi">
+                    <input className="input" value={grup.materi} onChange={(e) => setGrup({ ...grup, materi: e.target.value })} />
+                  </Field>
+                </div>
+                <datalist id="grup-kelas">{kelasList.map((k) => <option key={k} value={k} />)}</datalist>
+                <datalist id="grup-mapel">{mapelList.map((m) => <option key={m} value={m} />)}</datalist>
+                <div className="flex justify-end gap-2 mt-5">
+                  <button className="btn btn-ghost" onClick={() => setGrup(null)}>Batal</button>
+                  <button
+                    className="btn btn-primary"
+                    disabled={!grup.mapel.trim() || !grup.materi.trim()}
+                    onClick={() => {
+                      const nc = { kelas: grup.kelas.trim(), mapel: grup.mapel.trim(), materi: grup.materi.trim() }
+                      renameBankGroup(detail.ctx, nc)
+                      setOpen(keyOf(nc))
+                      setGrup(null)
+                    }}
+                  >
+                    Simpan perubahan
+                  </button>
+                </div>
+              </>
+            )}
+          </Modal>
 
           <div className="space-y-3 md:hidden">
             {detail.items.map((b, i) => (

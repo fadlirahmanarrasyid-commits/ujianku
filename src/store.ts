@@ -546,6 +546,18 @@ export function removeBank(id: string) {
   setDB({ ...db, bank: db.bank.filter((x) => x.id !== id) })
   if (remoteOn) enqueueWrite('Hapus bank soal', () => remote.removeBank(id))
 }
+/** Mengubah kelas, mapel, atau materi untuk semua soal dalam satu materi sekaligus. */
+export function renameBankGroup(
+  from: { kelas: string; mapel: string; materi: string },
+  to: { kelas: string; mapel: string; materi: string },
+) {
+  const cocok = (b: BankItem) => (b.kelas || '') === from.kelas && b.mapel === from.mapel && (b.materi || '') === from.materi
+  const baru = db.bank.filter(cocok).map((b) => ({ ...b, kelas: to.kelas, mapel: to.mapel, materi: to.materi }))
+  if (!baru.length) return
+  const idBaru = new Map(baru.map((b) => [b.id, b]))
+  setDB({ ...db, bank: db.bank.map((b) => idBaru.get(b.id) ?? b) })
+  if (remoteOn) enqueueWrite('Ubah materi bank', async () => { for (const b of baru) await remote.saveBank(b) }, () => refreshRemote())
+}
 
 /* ---------- ragu-ragu ---------- */
 export function toggleRagu(attemptId: string, qid: string) {
