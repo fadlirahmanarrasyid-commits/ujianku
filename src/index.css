@@ -92,6 +92,10 @@ body {
   /* Jangan memotong tabel di dalam pembungkus scroll; batasi lebar ke lebar kertas. */
   .print-area .overflow-x-auto { overflow: visible !important; width: 100% !important; }
   .print-area table { width: 100% !important; min-width: 0 !important; table-layout: auto; }
+  /* Hilangkan batas lebar dan padding layar (max-w-6xl, px-4/px-6) agar tabel memakai seluruh area cetak. */
+  main { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+  .print-area { width: 100% !important; margin: 0 !important; }
+  .print-area .th, .print-area .td { padding: .25rem .3rem !important; }
   /* Sel angka, NIS, dan kelas tetap satu baris; hanya nama yang boleh terbungkus. */
   .print-area td { white-space: nowrap !important; }
   .print-area td.font-semibold { white-space: normal !important; overflow-wrap: normal; min-width: 8.5rem; }
