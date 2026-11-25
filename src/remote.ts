@@ -58,7 +58,10 @@ function mapTasks(tugas: Row[], tk: Row[], soal: Row[], namaKelas: (id: string |
   const soalByTugas = new Map<string, Question[]>()
   for (const s of soal) {
     const k = Array.isArray(s.kunci_soal) ? s.kunci_soal[0] : s.kunci_soal
-    const q: Question = { id: s.id, tipe: s.tipe, text: s.teks, options: s.opsi, key: k?.kunci ?? [], bobot: s.bobot, gambar: s.gambar_url ?? undefined }
+    const q: Question = {
+      id: s.id, tipe: s.tipe, text: s.teks, options: s.opsi, key: k?.kunci ?? [], bobot: s.bobot, gambar: s.gambar_url ?? undefined,
+      kiri: s.kiri ?? undefined, kunciTeks: k?.kunci_teks ?? [],
+    }
     const list = soalByTugas.get(s.tugas_id) ?? []
     list.push(q)
     soalByTugas.set(s.tugas_id, list)
@@ -109,9 +112,11 @@ function mapAttempts(
   }
   return perc.map((p) => {
     const answers: Record<string, number[]> = {}
+    const teks: Record<string, string> = {}
     const ragu: string[] = []
     for (const j of jawabanBy.get(p.id) ?? []) {
       answers[j.soal_id] = j.pilihan ?? []
+      if (j.teks) teks[j.soal_id] = j.teks
       if (j.ragu) ragu.push(j.soal_id)
     }
     return {
@@ -124,6 +129,7 @@ function mapAttempts(
       order: p.urutan_soal ?? [],
       optionOrder: p.urutan_opsi ?? {},
       answers,
+      teks,
       cursor: 0,
       violations: (pelanggaranBy.get(p.id) ?? []).map((v) => ({
         t: ms(v.waktu) ?? 0,
@@ -149,7 +155,7 @@ export async function loadGuruSnapshot(): Promise<Snapshot> {
     sb.from('profiles').select('id,nama,nis,kelas_id,terkunci').eq('peran', 'siswa'),
     sb.from('tugas').select('*'),
     sb.from('tugas_kelas').select('tugas_id,kelas_id'),
-    sb.from('soal').select('*, kunci_soal(kunci)').order('urutan'),
+    sb.from('soal').select('*, kunci_soal(kunci,kunci_teks)').order('urutan'),
     sb.from('bank_soal').select('*'),
     sb.rpc('ringkasan_guru'),
   ])
@@ -176,6 +182,8 @@ export async function loadGuruSnapshot(): Promise<Snapshot> {
     text: b.teks,
     options: b.opsi,
     key: b.kunci,
+    kiri: b.kiri ?? undefined,
+    kunciTeks: b.kunci_teks ?? [],
     bobot: b.bobot,
     mapel: b.mapel,
     materi: b.materi,
@@ -371,6 +379,7 @@ export async function saveTask(t: Task) {
             tipe: q.tipe,
             teks: q.text,
             opsi: q.options,
+            kiri: q.kiri ?? null,
             bobot: q.bobot ?? 1,
             gambar_url: q.gambar ?? null,
           })),
@@ -383,7 +392,7 @@ export async function saveTask(t: Task) {
   const hapus = (ada ?? []).map((r: Row) => r.id as string).filter((id) => !ids.includes(id))
   if (hapus.length) fail((await sb.from('soal').delete().in('id', hapus)).error)
   if (ids.length) {
-    fail((await sb.from('kunci_soal').upsert(questions.map((q) => ({ soal_id: q.id, kunci: q.key })))).error)
+    fail((await sb.from('kunci_soal').upsert(questions.map((q) => ({ soal_id: q.id, kunci: q.key, kunci_teks: q.kunciTeks ?? [] })))).error)
   }
 }
 
@@ -413,6 +422,8 @@ export async function saveBank(item: BankItem) {
         teks: item.text,
         opsi: item.options,
         kunci: item.key,
+        kiri: item.kiri ?? null,
+        kunci_teks: item.kunciTeks ?? [],
         bobot: item.bobot ?? 1,
         gambar_url: gambar,
       })
@@ -480,8 +491,8 @@ export async function mulaiUjian(tugasId: string): Promise<string> {
   return data as string
 }
 
-export async function simpanJawaban(percobaanId: string, soalId: string, pilihan: number[], ragu: boolean) {
-  fail((await client().rpc('simpan_jawaban', { p_percobaan: percobaanId, p_soal: soalId, p_pilihan: pilihan, p_ragu: ragu })).error)
+export async function simpanJawaban(percobaanId: string, soalId: string, pilihan: number[], ragu: boolean, teks: string | null = null) {
+  fail((await client().rpc('simpan_jawaban', { p_percobaan: percobaanId, p_soal: soalId, p_pilihan: pilihan, p_ragu: ragu, p_teks: teks })).error)
 }
 
 export async function catatPelanggaran(percobaanId: string, tipe: ViolationType, catatan?: string): Promise<number> {

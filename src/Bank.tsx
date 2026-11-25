@@ -3,7 +3,7 @@ import type { BankItem } from './types'
 import { emptyQuestion, removeBank, renameBankGroup, saveBank, uid, useDB } from './store'
 import { parseAiken } from './aiken'
 import { bacaBerkasAiken } from './aikenBerkas'
-import { QuestionCard } from './Tasks'
+import { QuestionCard, soalValid } from './Tasks'
 import { Empty, Icon, Modal, usePagination } from './ui'
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -15,7 +15,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-const TIPE: Record<string, string> = { pg: 'Pilihan ganda', pgk: 'PG kompleks', bs: 'Benar / Salah' }
+const TIPE: Record<string, string> = { pg: 'Pilihan ganda', pgk: 'PG kompleks', bs: 'Benar / Salah', isian: 'Isian singkat', jodoh: 'Menjodohkan' }
 type Ctx = { kelas: string; mapel: string; materi: string }
 const keyOf = (c: Ctx) => [c.kelas, c.mapel, c.materi].join('||')
 
@@ -59,8 +59,7 @@ export function BankPage() {
   const detail = open ? groupMap.get(open) ?? null : null
 
   const newFor = (c: Ctx) => setEdit({ ...emptyQuestion('pg'), kelas: c.kelas, mapel: c.mapel, materi: c.materi })
-  const valid =
-    !!edit && edit.mapel.trim() !== '' && edit.text.trim() !== '' && edit.options.every((o) => o.trim()) && edit.key.length > 0
+  const valid = !!edit && edit.mapel.trim() !== '' && soalValid(edit)
 
   const addIcon = (c: Ctx, label: string) => (
     <button className="btn btn-primary btn-sm px-2" aria-label={label} title={label} onClick={() => newFor(c)}>
@@ -243,7 +242,7 @@ export function BankPage() {
                       </div>
                       <div className="font-semibold mt-2 break-words">{g.ctx.materi || '–'}</div>
                       <div className="text-sm break-words" style={{ color: 'var(--ink-soft)' }}>{g.ctx.mapel}</div>
-                      <div className="text-xs mt-1" style={{ color: 'var(--ink-soft)' }}>PG {c('pg')} · PGK {c('pgk')} · B/S {c('bs')}</div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--ink-soft)' }}>PG {c('pg')} · PGK {c('pgk')} · B/S {c('bs')} · Isian {c('isian')} · Jodoh {c('jodoh')}</div>
                     </button>
                     <div className="flex justify-end gap-2 mt-3 pt-3 border-t" style={{ borderColor: 'var(--line)' }}>
                       <button className="btn btn-ghost btn-sm" aria-label="Lihat soal" onClick={() => setOpen(g.key)}><Icon n="eye" s={14} /> Lihat</button>
@@ -275,7 +274,7 @@ export function BankPage() {
                         <td className="td break-words"><span className="chip chip-gray">{g.ctx.kelas || 'Umum'}</span></td>
                         <td className="td break-words">{g.ctx.mapel}</td>
                         <td className="td font-semibold break-words">{g.ctx.materi || '–'}</td>
-                        <td className="td hidden md:table-cell text-xs" style={{ color: 'var(--ink-soft)' }}>PG {c('pg')} · PGK {c('pgk')} · B/S {c('bs')}</td>
+                        <td className="td hidden md:table-cell text-xs" style={{ color: 'var(--ink-soft)' }}>PG {c('pg')} · PGK {c('pgk')} · B/S {c('bs')} · Isian {c('isian')} · Jodoh {c('jodoh')}</td>
                         <td className="td tabular-nums font-bold">{g.items.length}</td>
                         <td className="td" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-1">

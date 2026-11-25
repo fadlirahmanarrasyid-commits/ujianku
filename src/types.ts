@@ -11,15 +11,18 @@ export interface Student {
   sesiToken?: string // satu akun = satu perangkat
 }
 
-/** pg = pilihan ganda (2–5 opsi), pgk = pilihan ganda kompleks (banyak kunci), bs = benar/salah */
-export type QType = 'pg' | 'pgk' | 'bs'
+/** pg = pilihan ganda (2–5 opsi), pgk = pilihan ganda kompleks (banyak kunci), bs = benar/salah,
+ *  isian = jawaban teks singkat (beberapa jawaban diterima), jodoh = menjodohkan (kiri ↔ options). */
+export type QType = 'pg' | 'pgk' | 'bs' | 'isian' | 'jodoh'
 
 export interface Question {
   id: string
   tipe: QType
   text: string
-  options: string[]
-  key: number[] // indeks opsi asli yang benar (satu untuk pg/bs, bisa banyak untuk pgk)
+  options: string[] // pg/pgk/bs: pilihan. jodoh: item kanan. isian: kosong.
+  key: number[] // indeks opsi asli yang benar (pg/bs: satu; pgk: banyak; jodoh: kunci[i] = kanan untuk kiri ke-i; isian: kosong)
+  kiri?: string[] // jodoh: item kiri (sama panjang dengan key)
+  kunciTeks?: string[] // isian: jawaban yang diterima (perbandingan tanpa huruf besar/kecil)
   bobot?: number // poin soal, default 1
   gambar?: string // data URL (sebelum disimpan) atau URL publik di Supabase Storage
 }
@@ -69,7 +72,8 @@ export interface Attempt {
   finishedAt?: number
   order: string[]
   optionOrder: Record<string, number[]>
-  answers: Record<string, number[]> // qid -> daftar indeks opsi asli yang dipilih
+  answers: Record<string, number[]> // qid -> indeks opsi asli yang dipilih (jodoh: posisi per item kiri, -1 = belum)
+  teks?: Record<string, string> // qid -> jawaban isian
   cursor: number
   violations: Violation[]
   status: AttemptStatus

@@ -11,8 +11,13 @@
 4. `migrations/0004_siswa.sql`
 5. `migrations/0005_gambar.sql` (bucket Storage untuk gambar soal)
 6. `migrations/0006_lengkap.sql` (penilaian otomatis dan daftar pelanggaran)
+7. `migrations/0007_izin.sql` (hak akses tabel)
+8. `migrations/0008_ringkasan_guru.sql` (ringkasan nilai untuk guru)
+9. `migrations/0009_isian_jodoh.sql` (tipe soal **Isian singkat** dan **Menjodohkan**)
 
-Atau jalankan satu file `cbt-skema-lengkap.sql` untuk proyek yang masih kosong.
+Proyek yang sudah berjalan sebelumnya cukup menjalankan `0009_isian_jodoh.sql` saja. Migrasi ini hanya menambah kolom dan fungsi, tidak menghapus data.
+
+Atau jalankan satu file `cbt-skema-lengkap.sql` (versi 0001–0009) untuk proyek yang masih kosong.
 
 ## 3. Akun guru
 1. Authentication → Users → **Add user** (email guru, sandi kuat).
@@ -51,10 +56,16 @@ psql cbt_uji -f supabase/migrations/0002_rls.sql
 psql cbt_uji -f supabase/migrations/0003_fungsi.sql
 psql cbt_uji -f supabase/migrations/0004_siswa.sql
 psql cbt_uji -f supabase/migrations/0006_lengkap.sql
+psql cbt_uji -f supabase/migrations/0007_izin.sql
+psql cbt_uji -f supabase/migrations/0008_ringkasan_guru.sql
+psql cbt_uji -f supabase/migrations/0009_isian_jodoh.sql
 psql cbt_uji -f supabase/tests/10_uji_alur.sql
+psql cbt_uji -f supabase/tests/40_uji_isian_jodoh.sql
 ```
 Jangan jalankan folder `tests/` di proyek produksi. Versi lengkap uji 0006 ada di `tests/20_uji_0006.sql`.
 
 ## Catatan
 - Gambar soal disimpan di Storage (bucket `soal-gambar`, publik). Gambar yang sudah tidak dipakai tidak otomatis dihapus.
+- Nilai isian: jawaban dianggap benar jika cocok dengan salah satu kunci jawaban (satu kunci per baris). Huruf besar/kecil dan spasi berlebih diabaikan; nilainya all-or-nothing.
+- Nilai menjodohkan: setiap pasangan yang benar mendapat poin parsial sesuai jumlah pasangan benar dibagi jumlah pasangan.
 - Belum diuji terhadap proyek Supabase sungguhan. Lakukan uji alur (login guru, tambah siswa, siswa mengerjakan, dan penilaian otomatis) setelah deploy.

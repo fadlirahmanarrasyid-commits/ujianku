@@ -213,7 +213,15 @@ function TaskEditor({ initial, onClose }: { initial: Task; onClose: () => void }
     t.questions.forEach((q, i) => {
       const n = i + 1
       if (!q.text.trim()) e.push(`Soal ${n}: teks soal masih kosong.`)
+      if (q.tipe === 'isian') {
+        if (!(q.kunciTeks ?? []).some((s) => s.trim())) e.push(`Soal ${n}: isian butuh minimal satu jawaban kunci.`)
+        return
+      }
       if (q.options.some((o) => !o.trim())) e.push(`Soal ${n}: ada opsi jawaban yang kosong.`)
+      if (q.tipe === 'jodoh') {
+        if ((q.kiri ?? []).length < 2) e.push(`Soal ${n}: menjodohkan minimal 2 pasangan.`)
+        if ((q.kiri ?? []).some((s) => !s.trim())) e.push(`Soal ${n}: ada item kiri yang kosong.`)
+      }
       if (q.key.length === 0) e.push(`Soal ${n}: kunci jawaban belum ditandai.`)
     })
     return e
@@ -389,12 +397,43 @@ export function QuestionCard({
     }
   }
   const changeTipe = (tipe: QType) =>
-    upd((x) => ({
-      ...x,
-      tipe,
-      options: tipe === 'bs' ? ['Benar', 'Salah'] : x.tipe === 'bs' ? ['', '', '', ''] : x.options,
-      key: tipe === 'bs' ? [0] : tipe === 'pg' ? [x.key[0] ?? 0] : x.key.length ? x.key : [0],
-    }))
+    upd((x) => {
+      if (tipe === 'isian') {
+        return { ...x, tipe, options: [], key: [], kiri: undefined, kunciTeks: x.kunciTeks?.length ? x.kunciTeks : [''] }
+      }
+      if (tipe === 'jodoh') {
+        const dariJodoh = x.tipe === 'jodoh' && !!x.kiri
+        const n = dariJodoh ? (x.kiri?.length ?? 2) : 2
+        return {
+          ...x,
+          tipe,
+          kiri: dariJodoh ? x.kiri : Array(n).fill(''),
+          options: dariJodoh ? x.options : Array(n).fill(''),
+          key: identitas(n),
+          kunciTeks: undefined,
+        }
+      }
+      const dariKhusus = x.tipe === 'isian' || x.tipe === 'jodoh'
+      return {
+        ...x,
+        tipe,
+        kiri: undefined,
+        kunciTeks: undefined,
+        options: tipe === 'bs' ? ['Benar', 'Salah'] : x.tipe === 'bs' || dariKhusus ? ['', '', '', ''] : x.options,
+        key: tipe === 'bs' ? [0] : tipe === 'pg' ? [x.key[0] ?? 0] : x.key.length ? x.key : [0],
+      }
+    })
+  // Jodoh: kunci[i] selalu i (item kiri ke-i berpasangan dengan item kanan ke-i).
+  const addPasangan = () =>
+    upd((x) => {
+      const n = (x.kiri ?? []).length + 1
+      return { ...x, kiri: [...(x.kiri ?? []), ''], options: [...x.options, ''], key: identitas(n) }
+    })
+  const removePasangan = (i: number) =>
+    upd((x) => {
+      const kiri = (x.kiri ?? []).filter((_, z) => z !== i)
+      return { ...x, kiri, options: x.options.filter((_, z) => z !== i), key: identitas(kiri.length) }
+    })
   const toggleKey = (k: number) =>
     upd((x) => {
       if (x.tipe !== 'pgk') return { ...x, key: [k] }
@@ -416,6 +455,8 @@ export function QuestionCard({
             <option value="pg">Pilihan ganda (2–5 opsi)</option>
             <option value="pgk">Pilihan ganda kompleks</option>
             <option value="bs">Benar / Salah</option>
+            <option value="isian">Isian singkat</option>
+            <option value="jodoh">Menjodohkan</option>
           </select>
           <label className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--ink-soft)' }}>
             Bobot
@@ -468,6 +509,62 @@ export function QuestionCard({
         {gErr && <p className="text-xs w-full" style={{ color: 'var(--red)' }}>{gErr}</p>}
       </div>
 
+      {q.tipe === 'isian' && (
+        <div className="mt-3">
+          <label className="label" htmlFor={`kunci-${q.id}`}>Jawaban yang diterima (satu per baris)</label>
+          <textarea
+            id={`kunci-${q.id}`}
+            className="input"
+            rows={3}
+            value={(q.kunciTeks ?? []).join('\n')}
+            onChange={(e) => upd((x) => ({ ...x, kunciTeks: e.target.value.split('\n') }))}
+            placeholder={'Mesin pembakaran dalam\nInternal combustion engine'}
+            aria-label={`Jawaban kunci ${label}`}
+          />
+          <p className="text-xs mt-1" style={{ color: 'var(--ink-soft)' }}>
+            Jawaban siswa dianggap benar jika sama dengan salah satu baris di atas. Huruf besar/kecil dan spasi berlebih diabaikan.
+          </p>
+        </div>
+      )}
+
+      {q.tipe === 'jodoh' && (
+        <div className="mt-3 space-y-2">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs font-bold uppercase" style={{ color: 'var(--ink-soft)' }}>
+            <span>Item kiri</span><span aria-hidden="true" style={{ width: 14 }} /><span>Pasangannya (kanan)</span>
+          </div>
+          {(q.kiri ?? []).map((kiri, i) => (
+            <div key={i} className="flex items-center gap-2 min-w-0">
+              <input
+                className="input min-w-0"
+                value={kiri}
+                onChange={(e) => upd((x) => ({ ...x, kiri: (x.kiri ?? []).map((y, z) => (z === i ? e.target.value : y)) }))}
+                placeholder={`Item kiri ${i + 1}`}
+                aria-label={`Item kiri ${i + 1} ${label}`}
+              />
+              <Icon n="right" s={14} />
+              <input
+                className="input min-w-0"
+                value={q.options[i] ?? ''}
+                onChange={(e) => upd((x) => ({ ...x, options: x.options.map((y, z) => (z === i ? e.target.value : y)) }))}
+                placeholder={`Pasangan ${i + 1}`}
+                aria-label={`Pasangan kanan ${i + 1} ${label}`}
+              />
+              {(q.kiri ?? []).length > 2 && (
+                <button className="btn btn-ghost btn-sm shrink-0" aria-label="Hapus pasangan" onClick={() => removePasangan(i)}><Icon n="x" s={13} /></button>
+              )}
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <span className="text-xs" style={{ color: 'var(--ink-soft)' }}>Setiap item kiri dipasangkan dengan kanan di baris yang sama. Siswa melihat pilihan kanan dalam urutan acak.</span>
+            {(q.kiri ?? []).length < 5 && (
+              <button className="btn btn-ghost btn-sm" onClick={addPasangan}><Icon n="plus" s={13} /> Pasangan</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {q.tipe !== 'isian' && q.tipe !== 'jodoh' && (
+      <>
       <div className="mt-3 space-y-2">
         {q.options.map((o, k) => (
           <div key={k} className="flex items-center gap-2">
@@ -504,8 +601,24 @@ export function QuestionCard({
           <button className="btn btn-ghost btn-sm" onClick={() => upd((x) => ({ ...x, options: [...x.options, ''] }))}><Icon n="plus" s={13} /> Opsi</button>
         )}
       </div>
+      </>
+      )}
     </div>
   )
+}
+
+const TIPE_SINGKAT: Record<string, string> = { pg: 'PG', pgk: 'PGK', bs: 'B/S', isian: 'Isian', jodoh: 'Jodoh' }
+
+/** Indeks 0..n-1, dipakai sebagai kunci menjodohkan. */
+const identitas = (n: number) => Array.from({ length: n }, (_, i) => i)
+
+/** Soal siap disimpan (dipakai editor penugasan dan bank soal). */
+export function soalValid(q: Question): boolean {
+  if (!q.text.trim()) return false
+  if (q.tipe === 'isian') return (q.kunciTeks ?? []).some((s) => s.trim() !== '')
+  if (q.options.some((o) => !o.trim()) || q.key.length === 0) return false
+  if (q.tipe === 'jodoh') return (q.kiri ?? []).length >= 2 && (q.kiri ?? []).every((s) => s.trim() !== '')
+  return true
 }
 
 function BankPicker({ open, onClose, defaultMapel, onPick }: { open: boolean; onClose: () => void; defaultMapel: string; onPick: (qs: Question[]) => void }) {
@@ -563,7 +676,7 @@ function BankPicker({ open, onClose, defaultMapel, onPick }: { open: boolean; on
                       <span className="chip chip-gray">{b.kelas || 'Umum'}</span>
                       <span className="chip chip-teal">{b.mapel}</span>
                       {b.materi && <span className="chip chip-gray">{b.materi}</span>}
-                      <span className="chip chip-gray">{b.tipe === 'pg' ? 'PG' : b.tipe === 'pgk' ? 'PGK' : 'B/S'} · {b.bobot ?? 1} poin</span>
+                      <span className="chip chip-gray">{TIPE_SINGKAT[b.tipe] ?? 'B/S'} · {b.bobot ?? 1} poin</span>
                     </div>
                     <p className="text-sm break-words">{b.text}</p>
                   </div>

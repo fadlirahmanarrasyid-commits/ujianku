@@ -132,7 +132,10 @@ function stopPolling() {
 /* ---------- helper ---------- */
 export const isExpired = (t: Task) => t.batasAkhir !== null && Date.now() > t.batasAkhir
 export const effectiveEnd = (a: Attempt, t: Task) => Math.min(a.endsAt, t.batasAkhir ?? Infinity)
-export const isAnswered = (a: Attempt, qid: string) => (a.answers[qid]?.length ?? 0) > 0
+export const isAnswered = (a: Attempt, qid: string) =>
+  (a.answers[qid] ?? []).some((x) => x >= 0) || !!a.teks?.[qid]?.trim()
+/** Teks isian dibandingkan tanpa huruf besar/kecil dan tanpa spasi berlebih. */
+export const normTeks = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase()
 export const taskAudience = (t: Task, kelas: string) => t.kelas.length === 0 || t.kelas.includes(kelas)
 export const jumlahSoal = (t: Task) => t.jumlahSoal ?? t.questions.length
 const sameSet = (x: number[] = [], y: number[] = []) =>
@@ -324,7 +327,8 @@ export function unlockStudent(id: string) {
 }
 
 /* ---------- penugasan ---------- */
-export function saveTask(t: Task) {
+export function saveTask(task: Task) {
+  const t = { ...task, questions: task.questions.map(rapikanSoal) }
   const exists = db.tasks.some((x) => x.id === t.id)
   setDB({ ...db, tasks: exists ? db.tasks.map((x) => (x.id === t.id ? t : x)) : [t, ...db.tasks] })
   if (remoteOn) enqueueWrite('Simpan penugasan', () => remote.saveTask(t), () => refreshRemote())
@@ -338,6 +342,18 @@ export function toggleTask(id: string) {
   setDB({ ...db, tasks: db.tasks.map((x) => (x.id === id ? { ...x, aktif: !x.aktif } : x)) })
   if (remoteOn && t) enqueueWrite('Ubah status penugasan', () => remote.setTaskAktif(id, !t.aktif))
 }
+/** Membersihkan isi soal sebelum disimpan: spasi di ujung dibuang, jawaban isian kosong dihapus. */
+export function rapikanSoal<T extends Question>(q: T): T {
+  const bersih = (xs: string[]) => xs.map((s) => s.trim())
+  return {
+    ...q,
+    text: q.text.trim(),
+    options: q.tipe === 'isian' ? [] : bersih(q.options),
+    kiri: q.tipe === 'jodoh' && q.kiri ? bersih(q.kiri) : undefined,
+    kunciTeks: q.tipe === 'isian' ? [...new Set(bersih(q.kunciTeks ?? []).filter(Boolean))] : undefined,
+  }
+}
+
 export const emptyQuestion = (tipe: QType = 'pg'): Question => ({
   id: uid('q'),
   tipe,
@@ -431,7 +447,35 @@ function sendAnswer(attemptId: string, qid: string) {
   if (!a) return
   const pilihan = a.answers[qid] ?? []
   const ragu = (a.ragu ?? []).includes(qid)
-  enqueueWrite('Simpan jawaban', () => remote.simpanJawaban(attemptId, qid, pilihan, ragu))
+  const teks = a.teks?.[qid] ?? null
+  enqueueWrite('Simpan jawaban', () => remote.simpanJawaban(attemptId, qid, pilihan, ragu, teks))
+}
+
+/** Isian: teks disimpan di peramban saat mengetik; ke server saat kolom kehilangan fokus (kirimTeks). */
+export function setTeks(attemptId: string, qid: string, teks: string) {
+  patchAttempt(attemptId, (a) => {
+    if (a.status !== 'berjalan') return a
+    return { ...a, teks: { ...(a.teks ?? {}), [qid]: teks.slice(0, 1000) } }
+  })
+}
+export function kirimTeks(attemptId: string, qid: string) {
+  if (remoteOn) sendAnswer(attemptId, qid)
+}
+
+/** Menjodohkan: pilih kanan untuk item kiri ke-kiriIdx. Posisi lain tetap. */
+export function answerPasangan(attemptId: string, qid: string, kiriIdx: number, kananOrig: number) {
+  patchAttempt(attemptId, (a) => {
+    if (a.status !== 'berjalan') return a
+    const task = db.tasks.find((t) => t.id === a.taskId)
+    const q = task?.questions.find((x) => x.id === qid)
+    const panjang = q?.kiri?.length ?? 0
+    const cur = [...(a.answers[qid] ?? [])]
+    while (cur.length < panjang) cur.push(-1)
+    // Satu kanan hanya boleh dipasangkan sekali: lepas pasangan lama yang memakai kanan ini.
+    const next = cur.map((x, i) => (i === kiriIdx ? kananOrig : x === kananOrig ? -1 : x))
+    return { ...a, answers: { ...a.answers, [qid]: next } }
+  })
+  if (remoteOn) sendAnswer(attemptId, qid)
 }
 
 /** Pilpg/BS: mengganti pilihan. PGK: menambah/menghapus pilihan. */
@@ -451,8 +495,20 @@ export function setCursor(attemptId: string, cursor: number) {
   patchAttempt(attemptId, (a) => (a.status === 'berjalan' ? { ...a, cursor } : a))
 }
 
-/** Bagian nilai satu soal (0–1). PG dan BS: benar atau salah. PG kompleks: bobot x max(0, benar - salah) / jumlah kunci. */
-export function fraksiSoal(q: Question, ans: number[] = []): number {
+/** Bagian nilai satu soal (0–1).
+ *  PG dan BS: benar atau salah. PG kompleks: max(0, benar - salah) / jumlah kunci.
+ *  Isian: penuh jika cocok dengan salah satu jawaban yang diterima, selain itu 0.
+ *  Menjodohkan: pasangan benar / jumlah pasangan (nilai parsial). */
+export function fraksiSoal(q: Question, ans: number[] = [], teks = ''): number {
+  if (q.tipe === 'isian') {
+    const t = normTeks(teks)
+    return t && (q.kunciTeks ?? []).some((k) => normTeks(k) === t) ? 1 : 0
+  }
+  if (q.tipe === 'jodoh') {
+    if (!q.key.length) return 0
+    const benar = q.key.filter((k, i) => ans[i] === k).length
+    return benar / q.key.length
+  }
   if (q.tipe === 'pgk') {
     const pilih = [...new Set(ans)]
     const benar = pilih.filter((x) => q.key.includes(x)).length
@@ -463,7 +519,7 @@ export function fraksiSoal(q: Question, ans: number[] = []): number {
 }
 export function correctCount(task: Task, a: Attempt): number {
   if (a.benar !== undefined) return a.benar // mode Supabase: dihitung di server
-  return task.questions.filter((qq) => fraksiSoal(qq, a.answers[qq.id]) === 1).length
+  return task.questions.filter((qq) => fraksiSoal(qq, a.answers[qq.id], a.teks?.[qq.id]) === 1).length
 }
 /** Jumlah pelanggaran. Mode Supabase membawa angkanya; daftar lengkapnya dimuat saat dibuka. */
 export function jumlahPelanggaranOf(a: Attempt): number {
@@ -477,7 +533,7 @@ export async function muatPelanggaran(a: Attempt): Promise<Violation[]> {
 export function computeScore(task: Task, a: Attempt): number {
   if (!task.questions.length) return 0
   const total = task.questions.reduce((n, q) => n + (q.bobot ?? 1), 0)
-  const got = task.questions.reduce((n, q) => n + (q.bobot ?? 1) * fraksiSoal(q, a.answers[q.id]), 0)
+  const got = task.questions.reduce((n, q) => n + (q.bobot ?? 1) * fraksiSoal(q, a.answers[q.id], a.teks?.[q.id]), 0)
   return total ? Math.round((got / total) * 100) : 0
 }
 
@@ -537,7 +593,8 @@ export function resetAll() {
 }
 
 /* ---------- bank soal ---------- */
-export function saveBank(item: BankItem) {
+export function saveBank(input: BankItem) {
+  const item = rapikanSoal(input)
   const exists = db.bank.some((x) => x.id === item.id)
   setDB({ ...db, bank: exists ? db.bank.map((x) => (x.id === item.id ? item : x)) : [item, ...db.bank] })
   if (remoteOn) enqueueWrite('Simpan bank soal', () => remote.saveBank(item), () => refreshRemote())

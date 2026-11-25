@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Task, ViolationType } from './types'
-import { addViolation, answer, effectiveEnd, finishAttempt, isAnswered, setCursor, toggleRagu, useDB } from './store'
+import { addViolation, answer, answerPasangan, effectiveEnd, finishAttempt, isAnswered, kirimTeks, setCursor, setTeks, toggleRagu, useDB } from './store'
 import { Icon, Modal, VIOLATION_LABEL, enterFS, fmtTime } from './ui'
 
 type Overlay = null | { kind: 'resume' } | { kind: 'warn'; type: ViolationType }
@@ -139,7 +139,7 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
   if (a.status === 'selesai') {
     const score = a.score ?? 0
     const pass = score >= task.kkm
-    const answered = Object.keys(a.answers).filter((k) => a.answers[k].length > 0).length
+    const answered = a.order.filter((id) => isAnswered(a, id)).length
     return (
       <Centered>
         <p className="label">{task.mapel}</p>
@@ -241,6 +241,48 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
             {q.gambar && <img src={q.gambar} alt="Gambar soal" className="mb-5 rounded-md border max-h-72 w-auto max-w-full" style={{ borderColor: 'var(--line)' }} />}
             <p className="font-display text-xl sm:text-2xl leading-snug whitespace-pre-wrap">{q.text}</p>
             {q.tipe === 'pgk' && <p className="text-sm mt-2 font-semibold" style={{ color: 'var(--teal)' }}>Pilih semua jawaban yang benar. Pilihan yang salah mengurangi nilai soal ini.</p>}
+            {q.tipe === 'isian' && (
+              <div className="mt-6">
+                <label htmlFor={`teks-${qid}`} className="label">Jawaban Anda</label>
+                <input
+                  id={`teks-${qid}`}
+                  className="input"
+                  value={a.teks?.[qid] ?? ''}
+                  maxLength={1000}
+                  autoComplete="off"
+                  placeholder="Ketik jawaban singkat"
+                  onChange={(e) => setTeks(attemptId, qid, e.target.value)}
+                  onBlur={() => kirimTeks(attemptId, qid)}
+                />
+                <p className="text-xs mt-2" style={{ color: 'var(--ink-soft)' }}>Huruf besar/kecil dan spasi berlebih tidak dibedakan.</p>
+              </div>
+            )}
+
+            {q.tipe === 'jodoh' && (
+              <div className="mt-6 space-y-3">
+                <p className="text-sm font-semibold" style={{ color: 'var(--teal)' }}>Pasangkan setiap item di kiri dengan pilihan di kanan. Setiap pasangan yang benar menambah nilai.</p>
+                {(q.kiri ?? []).map((kiri, i) => (
+                  <div key={i} className="rounded-lg p-3 border" style={{ borderColor: 'var(--line)', background: 'var(--card)' }}>
+                    <div className="text-[15px] font-semibold mb-2">{i + 1}. {kiri}</div>
+                    <select
+                      className="input"
+                      value={chosen[i] ?? -1}
+                      onChange={(e) => answerPasangan(attemptId, qid, i, Number(e.target.value))}
+                      aria-label={`Pasangan untuk ${kiri}`}
+                    >
+                      <option value={-1} disabled>Pilih pasangan</option>
+                      {a.optionOrder[qid].map((orig) => (
+                        <option key={orig} value={orig} disabled={chosen.some((c, z) => c === orig && z !== i)}>
+                          {q.options[orig]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {q.tipe !== 'isian' && q.tipe !== 'jodoh' && (
             <div className="mt-6 space-y-3" role="radiogroup" aria-label="Pilihan jawaban">
               {a.optionOrder[qid].map((orig, pos) => {
                 const sel = chosen.includes(orig)
@@ -261,6 +303,7 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
                 )
               })}
             </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between mt-5 gap-3">
@@ -271,7 +314,7 @@ export default function Exam({ task, attemptId, studentName, studentNis, fsEnfor
               <button className="btn btn-amber" onClick={() => setFinishOpen(true)}><Icon n="check" s={15} /> Selesai</button>
             ) : (
               <button className="btn btn-primary" onClick={() => setCursor(attemptId, cursor + 1)}>
-                {!chosen.length && task.kunciMaju ? 'Lewati' : 'Berikutnya'} <Icon n="right" s={15} />
+                {!isAnswered(a, qid) && task.kunciMaju ? 'Lewati' : 'Berikutnya'} <Icon n="right" s={15} />
               </button>
             )}
           </div>
