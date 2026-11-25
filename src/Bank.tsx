@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import type { BankItem } from './types'
-import { emptyQuestion, removeBank, renameBankGroup, saveBank, uid, useDB } from './store'
+import { daftarMapel, emptyQuestion, removeBank, renameBankGroup, saveBank, uid, useDB } from './store'
 import { parseAiken } from './aiken'
 import { bacaBerkasAiken } from './aikenBerkas'
 import { QuestionCard, soalValid } from './Tasks'
@@ -35,7 +35,7 @@ export function BankPage() {
   const [grup, setGrup] = useState<Ctx | null>(null)
 
   const kelasList = [...new Set([...db.students.map((s) => s.kelas), ...db.bank.map((b) => b.kelas)].filter(Boolean))].sort()
-  const mapelList = [...new Set(db.bank.map((b) => b.mapel))].sort()
+  const mapelList = daftarMapel()
 
   // Kelompokkan soal per kelas + mapel + materi
   const groupMap = new Map<string, { ctx: Ctx; items: BankItem[] }>()

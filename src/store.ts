@@ -288,24 +288,29 @@ export function addStudents(list: Omit<Student, 'id' | 'locked' | 'failedLogin'>
   return { added: fresh.length, skipped }
 }
 
-export function updateStudent(id: string, patch: Partial<Student>) {
+/** Mengubah data siswa. Mengembalikan pesan galat bila NIS baru sudah dipakai siswa lain. */
+export function updateStudent(id: string, patch: Partial<Student>): string | null {
+  if (patch.nis !== undefined && db.students.some((s) => s.id !== id && s.nis === patch.nis)) {
+    return `NIS ${patch.nis} sudah dipakai siswa lain.`
+  }
   setDB({ ...db, students: db.students.map((s) => (s.id === id ? { ...s, ...patch } : s)) })
-  if (!remoteOn) return
+  if (!remoteOn) return null
   if (patch.pin !== undefined) {
     const pin = patch.pin
     enqueueWrite('Ubah PIN', () => remote.kelolaSiswa({ action: 'ubah_pin', id, pin }))
   }
   if (patch.locked === false) enqueueWrite('Buka kunci', () => remote.unlockStudent(id))
-  if (patch.nama !== undefined || patch.kelas !== undefined) {
+  if (patch.nama !== undefined || patch.kelas !== undefined || patch.nis !== undefined) {
     const cur = db.students.find((x) => x.id === id)
     if (cur) {
       enqueueWrite(
         'Ubah data siswa',
-        () => remote.kelolaSiswa({ action: 'ubah', id, nama: cur.nama, kelas: cur.kelas }),
+        () => remote.kelolaSiswa({ action: 'ubah', id, nama: cur.nama, kelas: cur.kelas, nis: cur.nis }),
         () => refreshRemote(),
       )
     }
   }
+  return null
 }
 
 export function removeStudent(id: string) {
@@ -614,6 +619,64 @@ export function renameBankGroup(
   const idBaru = new Map(baru.map((b) => [b.id, b]))
   setDB({ ...db, bank: db.bank.map((b) => idBaru.get(b.id) ?? b) })
   if (remoteOn) enqueueWrite('Ubah materi bank', async () => { for (const b of baru) await remote.saveBank(b) }, () => refreshRemote())
+}
+
+/* ---------- mata pelajaran ---------- */
+
+/** Daftar induk mapel: gabungan daftar tersimpan dan mapel yang sudah dipakai soal atau penugasan. */
+export function daftarMapel(): string[] {
+  const semua = [...(db.mapel ?? []), ...db.bank.map((b) => b.mapel), ...db.tasks.map((t) => t.mapel)]
+  return [...new Set(semua.map((m) => (m ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id'))
+}
+
+/** Jumlah soal bank dan penugasan yang memakai satu mapel. */
+export function pemakaianMapel(nama: string) {
+  return {
+    soal: db.bank.filter((b) => b.mapel === nama).length,
+    tugas: db.tasks.filter((t) => t.mapel === nama).length,
+  }
+}
+
+function cekNamaMapel(nama: string, lama?: string): string | null {
+  if (!nama) return 'Nama mata pelajaran tidak boleh kosong.'
+  if (nama.length > 100) return 'Nama mata pelajaran maksimal 100 karakter.'
+  const sama = daftarMapel().find((m) => m.toLowerCase() === nama.toLowerCase() && m !== lama)
+  return sama ? `"${sama}" sudah ada.` : null
+}
+
+/** Menambah mapel ke daftar. Mengembalikan pesan galat, atau null bila berhasil. */
+export function tambahMapel(nama: string): string | null {
+  const v = nama.trim()
+  const galat = cekNamaMapel(v)
+  if (galat) return galat
+  setDB({ ...db, mapel: [...new Set([...(db.mapel ?? []), v])] })
+  if (remoteOn) enqueueWrite('Tambah mapel', () => remote.tambahMapel(v), () => refreshRemote())
+  return null
+}
+
+/** Mengganti nama mapel di daftar, soal bank, dan penugasan. */
+export function ubahMapel(lama: string, baru: string): string | null {
+  const v = baru.trim()
+  if (v === lama) return null
+  const galat = cekNamaMapel(v, lama)
+  if (galat) return galat
+  setDB({
+    ...db,
+    mapel: [...new Set([...(db.mapel ?? []).filter((m) => m !== lama), v])],
+    bank: db.bank.map((b) => (b.mapel === lama ? { ...b, mapel: v } : b)),
+    tasks: db.tasks.map((t) => (t.mapel === lama ? { ...t, mapel: v } : t)),
+  })
+  if (remoteOn) enqueueWrite('Ubah mapel', () => remote.ubahMapel(lama, v), () => refreshRemote())
+  return null
+}
+
+/** Menghapus mapel dari daftar. Ditolak bila masih dipakai soal atau penugasan. */
+export function hapusMapel(nama: string): string | null {
+  const p = pemakaianMapel(nama)
+  if (p.soal + p.tugas > 0) return `"${nama}" masih dipakai ${p.soal} soal dan ${p.tugas} penugasan.`
+  setDB({ ...db, mapel: (db.mapel ?? []).filter((m) => m !== nama) })
+  if (remoteOn) enqueueWrite('Hapus mapel', () => remote.hapusMapel(nama), () => refreshRemote())
+  return null
 }
 
 /* ---------- ragu-ragu ---------- */

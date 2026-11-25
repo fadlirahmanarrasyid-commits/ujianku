@@ -50,6 +50,7 @@ export interface Snapshot {
   tasks: Task[]
   bank: BankItem[]
   attempts: Attempt[]
+  mapel: string[]
 }
 
 /* ----------------------------- pemetaan data ----------------------------- */
@@ -150,7 +151,7 @@ function mapAttempts(
 export async function loadGuruSnapshot(): Promise<Snapshot> {
   const sb = client()
   // Ringkasan hasil dihitung di server (migrasi 0008): jawaban dan pelanggaran tidak diunduh semua.
-  const [kelasR, profR, tugasR, tkR, soalR, bankR, ringkasR] = await Promise.all([
+  const [kelasR, profR, tugasR, tkR, soalR, bankR, ringkasR, mapelR] = await Promise.all([
     sb.from('kelas').select('id,nama'),
     sb.from('profiles').select('id,nama,nis,kelas_id,terkunci').eq('peran', 'siswa'),
     sb.from('tugas').select('*'),
@@ -158,8 +159,9 @@ export async function loadGuruSnapshot(): Promise<Snapshot> {
     sb.from('soal').select('*, kunci_soal(kunci,kunci_teks)').order('urutan'),
     sb.from('bank_soal').select('*'),
     sb.rpc('ringkasan_guru'),
+    sb.from('mapel').select('nama').order('nama'),
   ])
-  for (const r of [kelasR, profR, tugasR, tkR, soalR, bankR, ringkasR]) fail(r.error)
+  for (const r of [kelasR, profR, tugasR, tkR, soalR, bankR, ringkasR, mapelR]) fail(r.error)
 
   const kelasNama = new Map<string, string>((kelasR.data ?? []).map((k: Row) => [k.id, k.nama]))
   const namaKelas = (id: string | null) => (id ? kelasNama.get(id) ?? '' : '')
@@ -192,7 +194,8 @@ export async function loadGuruSnapshot(): Promise<Snapshot> {
   }))
 
   const attempts = (ringkasR.data ?? []).map(attemptDariRingkasan)
-  return { students, tasks, bank, attempts }
+  const mapel = (mapelR.data ?? []).map((m: Row) => m.nama as string)
+  return { students, tasks, bank, attempts, mapel }
 }
 
 function attemptDariRingkasan(r: Row): Attempt {
@@ -275,7 +278,7 @@ export async function loadSiswaSnapshot(): Promise<Snapshot> {
     const v = pelBy.get(a.id)
     if (v) a.violations = v
   }
-  return { students: [me], tasks, bank: [], attempts }
+  return { students: [me], tasks, bank: [], attempts, mapel: [] }
 }
 
 /* ----------------------------- sesi ----------------------------- */
@@ -481,6 +484,23 @@ export async function kelolaSiswa(body: Record<string, unknown>): Promise<Row> {
   }
   if (data?.error) throw new Error(data.error)
   return data ?? {}
+}
+
+/* ----------------------------- tulis: mapel ----------------------------- */
+
+/** Menambah nama mapel ke daftar induk guru. Galat duplikat ditangani pemanggil. */
+export async function tambahMapel(nama: string) {
+  fail((await client().from('mapel').insert({ nama })).error)
+}
+
+/** Mengganti nama mapel; soal bank dan penugasan milik guru ikut diperbarui di server (migrasi 0010). */
+export async function ubahMapel(lama: string, baru: string) {
+  fail((await client().rpc('ubah_mapel', { p_lama: lama, p_baru: baru })).error)
+}
+
+/** Menghapus mapel dari daftar; server menolak bila masih dipakai. */
+export async function hapusMapel(nama: string) {
+  fail((await client().rpc('hapus_mapel', { p_nama: nama })).error)
 }
 
 /* ----------------------------- tulis: siswa ----------------------------- */

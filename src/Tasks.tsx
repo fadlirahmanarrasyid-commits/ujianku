@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Attempt, QType, Question, Student, Task, Violation } from './types'
 import {
-  correctCount, emptyQuestion, emptyTask, isExpired, jumlahPelanggaranOf, muatPelanggaran, removeTask, resetAttempt, saveBank, saveTask,
+  correctCount, daftarMapel, emptyQuestion, emptyTask, isExpired, jumlahPelanggaranOf, muatPelanggaran, removeTask, resetAttempt, saveBank, saveTask,
   taskAudience, toggleTask, uid, unlockStudent, useDB,
 } from './store'
 import { parseAiken } from './aiken'
@@ -42,7 +42,7 @@ export function Tasks({ onResults }: { onResults: (id: string) => void }) {
   const [mapelF, setMapelF] = useState('')
 
   const kelasList = [...new Set([...db.students.map((x) => x.kelas), ...db.tasks.flatMap((x) => x.kelas)])].filter(Boolean).sort()
-  const mapelList = [...new Set(db.tasks.map((x) => x.mapel).filter(Boolean))].sort()
+  const mapelList = daftarMapel()
   const rows = db.tasks.filter(
     (t) =>
       (!kelasF || taskAudience(t, kelasF)) &&
@@ -625,7 +625,7 @@ function BankPicker({ open, onClose, defaultMapel, onPick }: { open: boolean; on
   const db = useDB()
   const [mapel, setMapel] = useState('')
   const [dipilih, setDipilih] = useState<Set<string>>(new Set())
-  const mapelList = [...new Set(db.bank.map((b) => b.mapel))].sort()
+  const mapelList = daftarMapel()
   const rows = db.bank.filter((b) => !mapel || b.mapel === mapel)
   const semuaTerpilih = rows.length > 0 && rows.every((b) => dipilih.has(b.id))
   const toggle = (id: string) => setDipilih((prev) => {
@@ -946,7 +946,7 @@ export function Recap() {
   const [mapel, setMapel] = useState('')
   const [msg, setMsg] = useState('')
 
-  const mapelList = [...new Set(db.tasks.map((t) => t.mapel).filter(Boolean))].sort()
+  const mapelList = daftarMapel()
   const kelasList = [...new Set(db.students.map((s) => s.kelas))].sort()
 
   const tasks = db.tasks

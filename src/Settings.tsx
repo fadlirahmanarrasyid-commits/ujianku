@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { changeTeacherPassword, changeTeacherPasswordRemote, remoteOn } from './store'
 import { supabaseAnonKey, supabaseUrl } from './lib/supabase'
 import { Icon } from './ui'
+import { MapelSettings } from './MapelSettings'
 
 type Msg = { tone: 'ok' | 'err' | 'muted'; text: string } | null
 const TONE = { ok: 'var(--green)', err: 'var(--red)', muted: 'var(--ink-soft)' }
@@ -50,7 +51,7 @@ export function Settings() {
     <section className="max-w-2xl space-y-5">
       <div>
         <h1 className="font-display text-2xl font-bold">Pengaturan</h1>
-        <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Koneksi database dan keamanan akun guru.</p>
+        <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Koneksi database, mata pelajaran, dan keamanan akun guru.</p>
       </div>
 
       <div className="card p-5">
@@ -80,6 +81,8 @@ export function Settings() {
           <button className="btn btn-ghost" onClick={test} disabled={busy}><Icon n="refresh" s={14} /> Uji koneksi</button>
         </div>
       </div>
+
+      <MapelSettings />
 
       <div className="card p-5">
         <h2 className="font-display font-bold text-lg mb-4">Sandi guru</h2>

@@ -177,20 +177,25 @@ function PinDialog({ s, onClose }: { s: Student; onClose: () => void }) {
 
 function EditDialog({ s, kelasList, onClose }: { s: Student; kelasList: string[]; onClose: () => void }) {
   const [nama, setNama] = useState(s.nama)
+  const [nis, setNis] = useState(s.nis)
   const [kelas, setKelas] = useState(s.kelas)
   const [err, setErr] = useState('')
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!nama.trim()) return setErr('Nama tidak boleh kosong.')
-    updateStudent(s.id, { nama: nama.trim(), kelas: kelas.trim() || 'Tanpa kelas' })
+    const n = nis.trim()
+    if (!/^[A-Za-z0-9._-]{1,30}$/.test(n)) return setErr('NIS hanya boleh huruf, angka, titik, garis bawah, atau strip (maksimal 30 karakter).')
+    const galat = updateStudent(s.id, { nama: nama.trim(), kelas: kelas.trim() || 'Tanpa kelas', nis: n })
+    if (galat) return setErr(galat)
     onClose()
   }
   return (
     <Modal open onClose={onClose} title="Ubah data siswa">
       <form onSubmit={submit} className="space-y-3">
         <div><label className="label" htmlFor="en">Nama lengkap</label><input id="en" className="input" value={nama} onChange={(e) => { setNama(e.target.value); setErr('') }} required /></div>
+        <div><label className="label" htmlFor="enis">NIS</label><input id="enis" className="input font-mono" value={nis} onChange={(e) => { setNis(e.target.value); setErr('') }} required /></div>
         <div><label className="label" htmlFor="ek">Kelas</label><input id="ek" list="ekls" className="input" value={kelas} onChange={(e) => setKelas(e.target.value)} /><datalist id="ekls">{kelasList.map((k) => <option key={k} value={k} />)}</datalist></div>
-        <p className="text-xs" style={{ color: 'var(--ink-soft)' }}>NIS tidak dapat diubah. Buat siswa baru bila NIS salah.</p>
+        <p className="text-xs" style={{ color: 'var(--ink-soft)' }}>Bila NIS diubah, siswa masuk dengan NIS baru dan PIN yang sama.</p>
         {err && <p className="text-sm" style={{ color: 'var(--red)' }}>{err}</p>}
         <div className="flex justify-end gap-2 pt-2"><button type="button" className="btn btn-ghost" onClick={onClose}>Batal</button><button className="btn btn-primary">Simpan</button></div>
       </form>

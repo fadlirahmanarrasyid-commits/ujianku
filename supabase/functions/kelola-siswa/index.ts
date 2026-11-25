@@ -162,11 +162,31 @@ Deno.serve(async (req) => {
         const id = String(body.id ?? '')
         const nama = String(body.nama ?? '').trim()
         if (!nama || nama.length > 100) return json({ error: 'Nama tidak valid.' }, 400)
-        const { data: target } = await admin.from('profiles').select('peran').eq('id', id).maybeSingle()
+        const { data: target } = await admin.from('profiles').select('peran,nis').eq('id', id).maybeSingle()
         if (target?.peran !== 'siswa') return json({ error: 'Siswa tidak ditemukan.' }, 404)
+        // NIS opsional: bila tidak dikirim, NIS lama dipertahankan.
+        const nisLama = String(target.nis ?? '')
+        const nisBaru = body.nis === undefined ? nisLama : String(body.nis ?? '').trim()
+        if (!NIS_OK.test(nisBaru)) {
+          return json({ error: 'NIS hanya boleh huruf, angka, titik, garis bawah, atau strip (maksimal 30 karakter).' }, 400)
+        }
         const kelasId = await kelasIdOf(String(body.kelas ?? ''))
-        const { error } = await admin.from('profiles').update({ nama, kelas_id: kelasId }).eq('id', id)
-        if (error) return json({ error: error.message }, 500)
+        const gantiNis = nisBaru !== nisLama
+        if (gantiNis) {
+          const { data: dipakai } = await admin.from('profiles').select('id').eq('nis', nisBaru).neq('id', id).maybeSingle()
+          if (dipakai) return json({ error: `NIS ${nisBaru} sudah dipakai siswa lain.` }, 409)
+          // Login siswa memakai email <nis>@sekolah.local, jadi email akun ikut diganti.
+          const { error: eEmail } = await admin.auth.admin.updateUserById(id, { email: `${nisBaru}@sekolah.local`, email_confirm: true })
+          if (eEmail) return json({ error: eEmail.message }, 500)
+        }
+        const { error } = await admin.from('profiles').update({ nama, kelas_id: kelasId, nis: nisBaru }).eq('id', id)
+        if (error) {
+          if (gantiNis) {
+            // Kembalikan email lama agar NIS di akun dan di profil tetap sama.
+            await admin.auth.admin.updateUserById(id, { email: `${nisLama}@sekolah.local`, email_confirm: true })
+          }
+          return json({ error: error.message }, 500)
+        }
         return json({ ok: true })
       }
 

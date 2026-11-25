@@ -91,6 +91,8 @@ export interface DB {
   bank: BankItem[]
   attempts: Attempt[]
   teacher: { user: string; pass: string }
+  /** Daftar induk mata pelajaran (Pengaturan → Mata pelajaran). Kosong pada data lama. */
+  mapel?: string[]
 }
 
 export interface Session {
