@@ -945,6 +945,8 @@ export function Recap() {
   const [kelas, setKelas] = useState('')
   const [mapel, setMapel] = useState('')
   const [msg, setMsg] = useState('')
+  // Ringkas (default): hanya rata-rata per mapel dan keseluruhan, muat tanpa scroll horizontal.
+  const [detail, setDetail] = useState(false)
 
   const mapelList = daftarMapel()
   const kelasList = [...new Set(db.students.map((s) => s.kelas))].sort()
@@ -1037,7 +1039,7 @@ export function Recap() {
       <div className="no-print flex flex-wrap items-end justify-between gap-3 mb-5">
         <div>
           <h1 className="font-display text-2xl font-bold">Rekap hasil ujian</h1>
-          <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Semua tugas per mapel tampil dalam satu tabel. Filter per kelas dan mapel.</p>
+          <p className="text-sm" style={{ color: 'var(--ink-soft)' }}>Rata-rata per mapel dan keseluruhan dalam satu tabel. Tampilkan detail tugas untuk nilai per tugas. Filter per kelas dan mapel.</p>
         </div>
         <div className="flex flex-wrap gap-2 items-end">
           <div>
@@ -1054,6 +1056,9 @@ export function Recap() {
               {mapelList.map((m) => <option key={m}>{m}</option>)}
             </select>
           </div>
+          <button className="btn btn-ghost" onClick={() => setDetail((d) => !d)} aria-pressed={detail} title="Tampilkan nilai setiap tugas, bukan hanya rata-rata">
+            {detail ? 'Sembunyikan detail' : 'Tampilkan detail tugas'}
+          </button>
           <button className="btn btn-ghost" onClick={copyTable}><Icon n="copy" /> Salin tabel</button>
           <button className="btn btn-ghost" onClick={eksporCsv} disabled={students.length === 0} title="Unduh rekap sebagai CSV (bisa dibuka di Excel)"><Icon n="upload" /> Ekspor CSV</button>
           <button className="btn btn-primary" onClick={printNow}><Icon n="eye" /> Cetak rekap</button>
@@ -1074,7 +1079,10 @@ export function Recap() {
           <Empty icon="chart" title="Belum ada hasil" hint="Tidak ada ujian yang sudah dikerjakan untuk filter ini." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse" style={{ minWidth: 640 + groups.reduce((n, g) => n + g.tasks.length * 120, 0) }}>
+            <table
+              className="w-full text-sm border-collapse"
+              style={detail ? { minWidth: 640 + groups.reduce((n, g) => n + g.tasks.length * 120, 0) } : undefined}
+            >
               <thead>
                 <tr>
                   <th className={th} rowSpan={2}>No</th>
@@ -1082,16 +1090,27 @@ export function Recap() {
                   <th className={th} rowSpan={2}>NIS</th>
                   <th className={th} rowSpan={2}>Kelas</th>
                   {groups.map((g) => (
-                    <th key={g.mapel} className={th} colSpan={g.tasks.length + 1} style={{ background: 'var(--teal-tint)', color: 'var(--teal)' }}>{g.mapel}</th>
+                    <th
+                      key={g.mapel}
+                      className={th}
+                      colSpan={detail ? g.tasks.length + 1 : 1}
+                      rowSpan={detail ? 1 : 2}
+                      style={{ background: 'var(--teal-tint)', color: 'var(--teal)' }}
+                    >
+                      {g.mapel}
+                      {!detail && <div className="font-normal normal-case text-[10px]" style={{ color: 'var(--ink-soft)' }}>rata-rata</div>}
+                    </th>
                   ))}
-                  <th className={th} rowSpan={2}>Rata-rata</th>
+                  <th className={th} rowSpan={2}>Keseluruhan</th>
                 </tr>
-                <tr>
-                  {groups.flatMap((g) => [
-                    ...g.tasks.map((t) => <th key={t.id} className={th + ' max-w-[180px]'} style={{ whiteSpace: 'normal' }}>{t.judul}<div className="font-normal normal-case text-[10px]" style={{ color: 'var(--ink-soft)' }}>KKM {t.kkm}</div></th>),
-                    <th key={g.mapel + '-avg'} className={th} style={{ background: 'var(--tint-2)' }}>Rata-rata</th>,
-                  ])}
-                </tr>
+                {detail && (
+                  <tr>
+                    {groups.flatMap((g) => [
+                      ...g.tasks.map((t) => <th key={t.id} className={th + ' max-w-[180px]'} style={{ whiteSpace: 'normal' }}>{t.judul}<div className="font-normal normal-case text-[10px]" style={{ color: 'var(--ink-soft)' }}>KKM {t.kkm}</div></th>),
+                      <th key={g.mapel + '-avg'} className={th} style={{ background: 'var(--tint-2)' }}>Rata-rata</th>,
+                    ])}
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {students.map((s, i) => (
@@ -1101,10 +1120,12 @@ export function Recap() {
                     <td className="td tabular-nums">{s.nis}</td>
                     <td className="td">{s.kelas}</td>
                     {groups.flatMap((g) => [
-                      ...g.tasks.map((t) => {
-                        const c = cell(t, s)
-                        return <td key={t.id} className="td text-center tabular-nums font-bold" style={{ color: toneColor[c.tone] }}>{c.text}</td>
-                      }),
+                      ...(detail
+                        ? g.tasks.map((t) => {
+                          const c = cell(t, s)
+                          return <td key={t.id} className="td text-center tabular-nums font-bold" style={{ color: toneColor[c.tone] }}>{c.text}</td>
+                        })
+                        : []),
                       <td key={g.mapel + '-avg'} className="td text-center tabular-nums font-bold" style={{ background: 'var(--tint-1)' }}>{avgOf(g.tasks, s) ?? '–'}</td>,
                     ])}
                     <td className="td text-center tabular-nums font-bold">{avgOf(tasks, s) ?? '–'}</td>
